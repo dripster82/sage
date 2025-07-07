@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: sage_development
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5444:5432"
+
+  neo4j:
+    image: neo4j:5
+    environment:
+      NEO4J_AUTH: neo4j/password
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4jdata:/data
+
+  web:
+    build: .
+    # command: bundle exec rails server -b 0.0.0.0
+    command: tail -f /dev/null
+    volumes:
+      - .:/app
+    ports:
+      - "3030:3000"
+    depends_on:
+      - db
+      - neo4j
+    environment:
+      DATABASE_URL: postgres://postgres:password@db:5432/sage_development
+      NEO4J_URL: bolt://neo4j:password@neo4j:7687
+
+volumes:
+  pgdata:
+  neo4jdata:

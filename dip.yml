@@ -1,0 +1,56 @@
+# dip configuration file
+
+version: "3.8"
+
+compose:
+  files:
+    - docker-compose.yml
+  project_name: sage
+
+interaction:
+  bash:
+    description: Get a shell
+    service: web
+    command: /bin/bash
+    compose:
+      run_options: [no-deps]
+
+  web_shell:
+    description: Connect to the web service shell
+    command: docker exec -it sage-web-1 /bin/bash
+
+  server:
+    description: Run Rails server
+    service: web
+    command: bundle exec rails server -b 0.0.0.0
+    compose:
+      run_options: [service-ports, use-aliases]
+
+  rake:
+    description: Run Rake commands
+    service: web
+    command: bundle exec rake
+
+  bundle:
+    description: Run Bundler commands
+    service: web
+    command: bundle
+    compose:
+      run_options: [no-deps]
+
+  psql:
+    description: Run Postgres psql console
+    service: db
+    command: psql -h db -U postgres
+
+  neo4j_shell:
+    description: Run Neo4j cypher shell
+    service: neo4j
+    command: cypher-shell -u neo4j -p password
+
+provision:
+  - docker network inspect sage_default > /dev/null 2>&1 || docker network create sage_default
+  - dip compose down --volumes
+  - dip compose up -d db neo4j
+  - dip bundle install
+  - dip rake db:create db:migrate
