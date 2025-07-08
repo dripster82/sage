@@ -48,6 +48,10 @@ interaction:
     service: neo4j
     command: cypher-shell -u neo4j -p password
 
+  rebuild_web:
+    description: Rebuild the web service
+    command: dip compose build web
+
 provision:
   - docker network inspect sage_default > /dev/null 2>&1 || docker network create sage_default
   - dip compose down --volumes

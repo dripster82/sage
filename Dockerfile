@@ -41,9 +41,9 @@ COPY . .
 # # Seed the database
 # RUN bundle exec rails db:seed
 # Install JavaScript dependencies
-# RUN yarn install
+RUN bundle exec rails g active_admin:assets
 # Precompile assets
-RUN bundle exec rails assets:precompile
+RUN bundle exec rake assets:precompile
 
 # Expose port 3000
 EXPOSE 3000

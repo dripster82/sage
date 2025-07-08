@@ -5,5 +5,5 @@
 2) install dip gem `gem install dip`
 3) clone this repo `git clone https://github.com/dripster82/fresh_rails.git`
 4) move to the repo directory
-5) run `dip provision` this will setup the wholde docker containers
-6) run `dip server` to star the server
+5) run `dip provision` this will setup the whole docker containers
+6) run `dip server` to start the server
