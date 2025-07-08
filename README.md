@@ -1,22 +1,9 @@
-# Active Admin Demo
+# Fresh Rails 8 install with Active Admin 4 (beta 15)
 
-This is a sample application to demo Active Admin.
-
-https://activeadmin-demo.onrender.com
-
-## Development Setup
-
-- Clone this repository
-- Install Ruby 3.4.3 with [rbenv](https://github.com/rbenv/rbenv)
-- Install Node 22 with [nodenv](https://github.com/nodenv/nodenv)
-- `corepack enable`
-- `bundle install`
-- `yarn install`
-- `bin/rails db:seed`
-- `bin/dev`
-
-Open http://localhost:5000 and login using `admin@example.com` and `password`.
-
-### Tests
-
-Run `bin/rails test:all`
+## Steps
+1) install ruby 3.4.4
+2) install dip gem `gem install dip`
+3) clone this repo `git clone https://github.com/dripster82/fresh_rails.git`
+4) move to the repo directory
+5) run `dip provision` this will setup the wholde docker containers
+6) run `dip server` to star the server
