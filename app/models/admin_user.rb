@@ -1,6 +1,9 @@
+# frozen_string_literal: true
+
 class AdminUser < ApplicationRecord
-  has_secure_password
-  
-  validates :email, presence: true, uniqueness: true
-  validates :name, presence: true
+  DEFAULT_EMAIL = "admin@example.com"
+
+  # Include default devise modules. Others available are:
+  # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
+  devise :database_authenticatable, :recoverable, :rememberable, :validatable
 end

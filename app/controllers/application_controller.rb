@@ -1,4 +1,12 @@
+# frozen_string_literal: true
+
 class ApplicationController < ActionController::Base
-  # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
-  allow_browser versions: :modern
+  protect_from_forgery with: :exception
+
+  rate_limit to: 30, within: 1.minute
+  rate_limit to: 500, within: 1.day
+
+  def route_not_found
+    render file: Rails.public_path.join("404.html"), status: :not_found, layout: false
+  end
 end

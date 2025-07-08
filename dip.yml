@@ -53,4 +53,4 @@ provision:
   - dip compose down --volumes
   - dip compose up -d db neo4j
   - dip bundle install
-  - dip rake db:create db:migrate
+  - dip rake db:drop db:create db:migrate db:seed

@@ -1,24 +1,22 @@
-# README
+# Active Admin Demo
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+This is a sample application to demo Active Admin.
 
-Things you may want to cover:
+https://activeadmin-demo.onrender.com
 
-* Ruby version
+## Development Setup
 
-* System dependencies
+- Clone this repository
+- Install Ruby 3.4.3 with [rbenv](https://github.com/rbenv/rbenv)
+- Install Node 22 with [nodenv](https://github.com/nodenv/nodenv)
+- `corepack enable`
+- `bundle install`
+- `yarn install`
+- `bin/rails db:seed`
+- `bin/dev`
 
-* Configuration
+Open http://localhost:5000 and login using `admin@example.com` and `password`.
 
-* Database creation
+### Tests
 
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+Run `bin/rails test:all`
