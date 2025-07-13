@@ -39,3 +39,5 @@
 
 /node_modules
 /coverage
+
+.bevel/do_not_share

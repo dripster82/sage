@@ -15,6 +15,7 @@ require "action_mailer/railtie"
 require "action_view/railtie"
 # require "action_cable/engine"
 require "rails/test_unit/railtie"
+require 'active_graph/railtie'
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -37,5 +38,8 @@ module ActiveAdminDemo
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+    config.neo4j.driver.url = ENV['NEO4J_URL'] 
+    config.neo4j.driver.username = ENV['NEO4J_USER'] 
+    config.neo4j.driver.password = ENV['NEO4J_PASSWORD'] 
   end
 end

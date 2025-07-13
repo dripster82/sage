@@ -17,7 +17,7 @@ interaction:
 
   web_shell:
     description: Connect to the web service shell
-    command: docker exec -it sage-web-1 /bin/bash
+    command: docker exec -it $(docker ps --filter ancestor=sage-web --format "{{.Names}}") bash
 
   server:
     description: Run Rails server
@@ -25,6 +25,18 @@ interaction:
     command: bundle exec rails server -b 0.0.0.0
     compose:
       run_options: [service-ports, use-aliases]
+
+  webstart:
+    description: Run Rails server
+    service: web
+    command: tail -f /dev/null
+    compose:
+      run_options: [service-ports, use-aliases]
+
+  web_console:
+    description: Run Rails server
+    service: web
+    command: rails c
 
   rake:
     description: Run Rake commands
@@ -52,8 +64,16 @@ interaction:
     description: Rebuild the web service
     command: dip compose build web
 
+  destory:
+    description: Destroys all services
+    # Note: This command is not typically used in production environments.
+    # It is used here for demonstration purposes.
+    # It will remove all containers, networks, and volumes defined in the compose file.   
+    command: dip compose down --rmi all --volumes web && dip compose down --volumes
+
 provision:
-  - docker network inspect sage_default > /dev/null 2>&1 || docker network create sage_default
+  # Note: This command will wipe out your db and start fresh. Use with caution.
+  # - docker network inspect sage_default > /dev/null 2>&1 || docker network create sage_default
   - dip compose down --volumes
   - dip compose up -d db neo4j
   - dip bundle install

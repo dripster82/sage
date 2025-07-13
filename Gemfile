@@ -31,3 +31,15 @@ group :test do
   gem "simplecov", require: false
   gem "simplecov-cobertura"
 end
+
+gem "pdf_reader", "~> 0.0.1"
+
+gem "mime-types", "~> 3.7"
+
+gem "ruby_llm", "~> 1.3"
+
+gem "baran", "~> 0.2.1"
+
+
+
+gem "activegraph", "= 12.0.0.beta4"
