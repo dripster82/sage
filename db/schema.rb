@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2024_01_06_142000) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_13_191410) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -39,4 +39,50 @@ ActiveRecord::Schema[8.0].define(version: 2024_01_06_142000) do
     t.index ["email"], name: "index_admin_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_admin_users_on_reset_password_token", unique: true
   end
+
+  create_table "prompt_versions", force: :cascade do |t|
+    t.bigint "prompt_id", null: false
+    t.integer "version_number", null: false
+    t.text "content", null: false
+    t.text "change_summary"
+    t.string "name", null: false
+    t.text "description"
+    t.string "category"
+    t.json "metadata", default: {}
+    t.boolean "is_current", default: false, null: false
+    t.bigint "created_by_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_prompt_versions_on_created_at"
+    t.index ["created_by_id"], name: "index_prompt_versions_on_created_by_id"
+    t.index ["prompt_id", "is_current"], name: "index_prompt_versions_on_prompt_id_and_is_current"
+    t.index ["prompt_id", "version_number"], name: "index_prompt_versions_on_prompt_id_and_version_number", unique: true
+    t.index ["prompt_id"], name: "index_prompt_versions_on_prompt_id"
+    t.index ["version_number"], name: "index_prompt_versions_on_version_number"
+  end
+
+  create_table "prompts", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "content", null: false
+    t.integer "current_version", default: 1, null: false
+    t.string "status", default: "active", null: false
+    t.text "description"
+    t.string "category"
+    t.json "metadata", default: {}
+    t.bigint "created_by_id", null: false
+    t.bigint "updated_by_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_prompts_on_category"
+    t.index ["created_by_id"], name: "index_prompts_on_created_by_id"
+    t.index ["current_version"], name: "index_prompts_on_current_version"
+    t.index ["name"], name: "index_prompts_on_name", unique: true
+    t.index ["status"], name: "index_prompts_on_status"
+    t.index ["updated_by_id"], name: "index_prompts_on_updated_by_id"
+  end
+
+  add_foreign_key "prompt_versions", "admin_users", column: "created_by_id"
+  add_foreign_key "prompt_versions", "prompts"
+  add_foreign_key "prompts", "admin_users", column: "created_by_id"
+  add_foreign_key "prompts", "admin_users", column: "updated_by_id"
 end
