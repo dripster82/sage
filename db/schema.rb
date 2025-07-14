@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_13_191410) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_14_133926) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -38,6 +38,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_13_191410) do
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_admin_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_admin_users_on_reset_password_token", unique: true
+  end
+
+  create_table "ai_logs", force: :cascade do |t|
+    t.string "model"
+    t.json "settings"
+    t.text "query"
+    t.text "response"
+    t.integer "chat_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "input_tokens"
+    t.integer "output_tokens"
+    t.decimal "total_cost", precision: 10, scale: 7
   end
 
   create_table "prompt_versions", force: :cascade do |t|
@@ -73,6 +86,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_13_191410) do
     t.bigint "updated_by_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "tags"
     t.index ["category"], name: "index_prompts_on_category"
     t.index ["created_by_id"], name: "index_prompts_on_created_by_id"
     t.index ["current_version"], name: "index_prompts_on_current_version"

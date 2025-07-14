@@ -22,7 +22,7 @@ module Llm
               end
               last_time = Time.now
             end
-            chunk.vector = RubyLLM.embed(chunk.text)
+            chunk.vector = embed_text(chunk.text)
           ensure
             semaphore.pop       # release slot
           end
@@ -32,6 +32,10 @@ module Llm
       threads.each(&:join)
 
       chunks
+    end
+
+    def embed_text(text)
+      RubyLLM.embed(text)
     end
   end
 end

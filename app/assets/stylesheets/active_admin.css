@@ -1,3 +1,5 @@
+@import "./active_admin/custom.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

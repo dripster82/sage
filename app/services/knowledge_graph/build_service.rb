@@ -1,33 +1,161 @@
 module KnowledgeGraph
   class BuildService
 
-    def initialize(chunks)
+    def initialize(chunks, document)
       @chunks = chunks
+      @document = document
       @nodes_and_edges = []
       @current_doc_schema = {
-        node_types: ["Document", "Statement", "Code", "Project", "Person", "Job Title", "Company", "Coding Pattern", "Platform", "Category"], 
-        edge_types: ["mentioned_in", "used_in", "belongs_to", "works_at", "works_on", "is_a", "discusses"]
+        node_types: ["Document", "Statement", "Code", "Project", "Person", "Job Title", "Company", "Coding Pattern", "Platform", "Category", "Entity"], 
+        edge_types: ["mentioned_in", "used_in", "belongs_to", "works_at", "works_on", "is_a", "discusses"],
+        catgegories: ["Code", "Source Document", "Ai", "HR", "Customers"]
       }
+
+      @prompt1 = Prompt.find_by(name: "kg_extraction_1st_pass")
+      @prompt2 = Prompt.find_by(name: "kg_extraction_2nd_pass")
+      @category_validation_prompt = Prompt.find_by(name: "kg_extraction_category_validation")
     end
 
     def process
       process_with_llm 
+      preprocess_nodes_and_edges
+      validate_node_categories
       save_chunk_nodes_and_edges 
     end
 
+    def validate_node_categories
+
+      categories = @nodes_and_edges["nodes"].map do |node|
+        node if node["type"].upcase == "CATEGORY"
+      end.compact
+
+      return if categories.empty?
+
+
+      # Use LLM to validate the categories of the nodes
+      replacement_hash = @category_validation_prompt.tags_hash.tap do |h|
+        h[:categories] = categories.map { |c| c["name"] }.join(", ")
+        h[:summary] = @document.summary
+      end
+      query = @category_validation_prompt.content % replacement_hash
+      response =  Llm::QueryService.new(temperature:0.4).ask(query).content
+
+      puts response
+      raise "STOPPING"
+
+    end
+
+    def preprocess_nodes_and_edges
+      #remove duplicate nodes and edges form the combined node_and_edge
+      merged_nodes_and_edges = {}
+      @nodes_and_edges.each do |chunk|
+        chunk.each do |key, value|
+          merged_nodes_and_edges[key] ||= []
+          if value.is_a?(Array)
+            value.each do |item|
+              if key == 'nodes'
+                existing_node = merged_nodes_and_edges[key].find { |node| node['name'] == item['name'] && node['node_type'] == item['node_type'] }
+                if existing_node && item.has_key?("attributes") && item["attributes"].any?
+                  # Merge attributes from the duplicate node
+                  existing_node["attributes"] ||= {}
+                  existing_node["attributes"].merge!(item["attributes"]) { |_, old_val, new_val| Array(old_val) + Array(new_val) }
+                else
+                  merged_nodes_and_edges[key] << item
+                end
+              elsif key == 'edges'
+                existing_edge = merged_nodes_and_edges[key].find { |edge| edge['source'] == item['source'] && edge['target'] == item['target'] && edge['type'] == item['type'] }
+                if existing_edge && item.has_key?("attributes") && item["attributes"].any?
+                  # Merge attributes from the duplicate edge
+                  existing_edge["attributes"] ||= {}
+                  existing_edge["attributes"].merge!(item["attributes"]) { |_, old_val, new_val| Array(old_val) + Array(new_val) }
+                else
+                  merged_nodes_and_edges[key] << item
+                end
+              end
+            end
+            # merged_nodes_and_edges[key] = merged_nodes_and_edges[key] + value
+          elsif value.is_a?(Hash)
+            merged_nodes_and_edges[key] << value
+          end
+        end
+      end
+
+      @nodes_and_edges = merged_nodes_and_edges
+    end
+
+
     def save_chunk_nodes_and_edges
+      save_nodes
+      save_edges
+    end
+
+    def save_edges 
+      
       kg_service = KnowledgeGraph::QueryService.new
-      @nodes_and_edges.each do |node_and_edge|
-        node_and_edge[:nodes].each do |node|
-          attribute_string = node[:attributes].map { |key, value| "#{key}: '#{value}'" }.join(", ")
-          cypher = "CREATE (n:#{node[:type]} { name: '#{node[:name]}', #{attribute_string} })"
-          kg_service.query(cypher)
-        end          sleep_time = interval - (now - last_time)
+      edge_template = <<~TEMPLATE
+          MATCH (source:%{source_type} { name: "%{source_name}" })
+          MATCH (target:%{target_type} { name: "%{target_name}" })
+          MERGE (source)-[r:%{type}]->(target)%{attributes_clause}
+        TEMPLATE
+        attributes_clause = <<~TEMPLATE
+
+          ON CREATE SET %{attributes}
+          ON MATCH SET %{attributes}
+      TEMPLATE
+      
+      @nodes_and_edges["edges"].each do |edge|
+        attribute_pattern = nil
+        if edge.has_key?("attributes") && edge["attributes"].any?
+          attributes = edge["attributes"].map do |key, value| 
+            val = value.is_a?(String) ? value.gsub('"', '\"') : value
+            "r.#{key.downcase} = \"#{val}\"" 
+          end.join(", ")
+          attribute_pattern = attributes_clause % { attributes: attributes }
+        end
+        cypher = edge_template % { 
+          source_type: edge["source_type"].upcase, 
+          source_name: edge["source"].gsub('"', '\"'), 
+          target_type: edge["target_type"].upcase, 
+          target_name: edge["target"].gsub('"', '\"'), 
+          type: edge["type"].upcase, 
+          attributes_clause: attribute_pattern 
+        }
+        cypher = cypher.strip + ";"
+        # kg_service.query(cypher)
+        puts cypher
       end
     end
 
-    def process_with_llm(@chunks)
-      raise ArgumentError, "Chunks must be an array of Chunk instances" unless @chunks.is_a?(Array) && chunks.all? { |c| c.is_a?(Chunk) }
+    def save_nodes
+      kg_service = KnowledgeGraph::QueryService.new
+      node_template = <<~TEMPLATE
+          MERGE (n:%{type} { name: "%{name}" })%{attributes_clause}
+        TEMPLATE
+      attributes_clause = <<~TEMPLATE
+
+          ON CREATE SET %{attributes}
+          ON MATCH SET %{attributes}
+      TEMPLATE
+
+      @nodes_and_edges["nodes"].each do |node|
+        attribute_pattern = nil
+
+        if node.has_key?("attributes") && node["attributes"].any?
+          attributes = node["attributes"].map do |key, value| 
+            val = value.is_a?(String) ? value.gsub('"', '\"') : value
+            "n.#{key.downcase} = \"#{val}\"" 
+          end.join(", ")
+          attribute_pattern = attributes_clause % { attributes: attributes }
+        end
+        cypher = node_template % { type: node["type"].upcase, name: node["name"].gsub('"', '\"'), attributes_clause: attribute_pattern }
+        cypher = cypher.strip + ";"
+        # kg_service.query(cypher)
+        puts cypher
+      end 
+    end
+
+    def process_with_llm
+      raise ArgumentError, "Chunks must be an array of Chunk instances" unless @chunks.is_a?(Array) && @chunks.all? { |c| c.is_a?(Chunk) }
       
       total_start_time = Time.now
       
@@ -65,6 +193,7 @@ module KnowledgeGraph
       @nodes_and_edges
     rescue StandardError => e
       Rails.logger.error("Failed to build knowledge graph from chunks: #{e.message}")
+      Rails.logger.error(e.backtrace.join("\n"))
       nil
     end
 
@@ -73,68 +202,25 @@ module KnowledgeGraph
     def extract_nodes_and_edges(chunk)
       # Use LLM to process the chunk text and get KnowledgeGraph nodes and edges
       
-      prompt = <<~PROMPT
-Extract knowledge graph nodes and edges from the following text: 
-<TEXT START>
-#{sanitized_text(chunk.text)}
-<TEXT END>
 
-Current schema: #{@current_doc_schema.to_json}
-
-When using statements, linking to other nodes should be
-Node - mentioned_in -> Statment
-Statement - discusses -> Node
-
-INSTRUCTIONS:
-- Review the text and generate a list with all the key information that should be nodes.
-- Review the text and the node list and generate a list of relationships between those nodes
-- If the current Node Types are not suitable for the new node info, then you can suggest a new node type to use that describes the new node info type - Try to not be too generic,
-- If the edge Types do not work for the relationships needed to express the content of the text then new edges can be suggested
-- look at each node and suggest new category nodes it could be grouped/linked with 
-eg 
-1) Harry Potter and the Goblet of Fire - Category would be Book so we would add a new node "Book" of type "Category" and link Harry Potter and the Goblet of Fire to the Book node with "is_a" or "belongs_to" 
-2) Ruby on Rails - Category would be Programming Framework so we would add a new node "Programming Framework" of type "Category" and link the Ruby on Rails node to the Programming Framework with "is_a" or "belongs_to"
-      PROMPT
-
-      response = RubyLLM.chat.ask(prompt).content
-
-      prompt2 = <<~PROMPT2
-SOURCE TEXT:
-#{sanitized_text(chunk.text)}
-RESPONSE:
-#{response}
-OUTPUT FORMAT:
-{
-"Nodes": [
-{"name": "NodeName", "type": "NodeType", "attributes": {"key": "value"}},
-{"name": "Tron", "type": "Movie", "attributes": {"released": "1982"}},
-{"name": "Film", "type": "Category", "attributes": {}},
-{"name": "Jeff", "type": "Person", "attributes": {"born": "1962/02/02"}},
-{"name": "Actor", "type": "Category", "attributes": {}},
-...
-],
-"Edges": [
-{"source": "Tron", "target": "Film", "type": "is_a", "attributes": {}},
-{"source": "Jeff", "target": "Tron", "type": "was_in", "attributes": {}},
-{"source": "Jeff", "target": "Actor", "type": "is_a", "attributes": {}},
-...
-],
-new_schema: {
-"node_types": ["NodeType1", "NodeType2", "Movie", ...],
-"edge_types": ["EdgeType1", "EdgeType2", "was_in, ...]
-}
-}
-
-INSTRUCTIONS:
-Generate a json output of the nodes and edges for this text
-Ensure the output is a valid JSON object.
-Only return the JSON object, do not include any additional text or explanations or markdown formatting
-      PROMPT2
+      # create a replacement hash where the hash uses the tagslist as the keys and nil as the values
+      replacement_hash = @prompt1.tags_hash.tap do |h|
+        h[:text] = sanitized_text(chunk.text)
+        h[:current_schema] = @current_doc_schema.to_json
+        h[:summary] = @document.summary
+      end
+      prompt1_query = @prompt1.content % replacement_hash
+      response =  Llm::QueryService.new(temperature:0.4).ask(prompt1_query).content
 
 
-      node_data = RubyLLM.chat.ask(prompt2).content
-      # puts node_data
-# strip_formatting(node_data)
+      replacement_hash = @prompt2.tags_hash.tap do |h|
+        h[:text] = sanitized_text(chunk.text)
+        h[:response] = response
+        h[:current_schema] = @current_doc_schema.to_json
+      end
+      prompt2_query = @prompt2.content % replacement_hash
+      node_data =  Llm::QueryService.new(temperature:0.4).ask(prompt2_query).content
+
       JSON.parse(strip_formatting(node_data))
     rescue JSON::ParserError => e
       puts "Failed to parse JSON: #{e.message}"

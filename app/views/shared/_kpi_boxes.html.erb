@@ -1,0 +1,37 @@
+<%# 
+  KPI Boxes Component
+  
+  Renders a responsive grid of KPI metric boxes.
+  
+  Parameters:
+  - kpi_metrics: Array of 5 hashes, each containing:
+    - :value - Raw data value
+    - :formatted - Display-ready string
+    - :label - Display title
+    - :symbol - Icon character
+    - :color - Tailwind color name for icon background
+%>
+
+<div class="mb-8">
+  <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+    <% kpi_metrics.each do |metric| %>
+      <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border border-gray-200 dark:border-gray-700">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-<%= metric[:color] %>-500 rounded-md flex items-center justify-center">
+                <span class="text-white font-bold"><%= metric[:symbol] %></span>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate"><%= metric[:label] %></dt>
+                <dd class="text-lg font-medium text-gray-900 dark:text-gray-100"><%= metric[:formatted] %></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,26 @@
+#main-menu {
+  li.group > ul {
+    margin-left: 1rem;
+  }
+  
+  li.group:hover > ul {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+}
+
+.admin-custom-panel {
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.active-admin-form {
+  .custom-input {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.375rem;
+    
+    &:focus {
+      border-color: #3b82f6;
+      outline: none;
+    }
+  }
+}

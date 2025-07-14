@@ -28,6 +28,28 @@ ActiveAdmin.register Prompt do
     end
   end
 
+  member_action :delete_version, method: :delete do
+    version_number = params[:version_number].to_i
+
+    begin
+      unless resource.can_delete_version?(version_number)
+        redirect_to admin_prompt_path(resource),
+                    alert: "Cannot delete this version (it may be current or the only version)"
+        return
+      end
+
+      resource.delete_version!(version_number)
+      redirect_to admin_prompt_path(resource),
+                  notice: "Successfully deleted version #{version_number}"
+    rescue ActiveRecord::RecordNotFound
+      redirect_to admin_prompt_path(resource),
+                  alert: "Version #{version_number} not found"
+    rescue => e
+      redirect_to admin_prompt_path(resource),
+                  alert: "Error deleting version: #{e.message}"
+    end
+  end
+
   controller do
     def create
       @prompt = Prompt.new(permitted_params[:prompt])
@@ -63,7 +85,14 @@ ActiveAdmin.register Prompt do
     column :status do |prompt|
       status_tag prompt.status
     end
-    column :current_version
+    column :current_version 
+    column :tags do |prompt|
+      if prompt.tags_list.any?
+        prompt.tags_list.join(", ").html_safe
+      else
+        span "No tags", class: "text-gray-500"
+      end
+    end
     column :created_by, &:created_by
     column :updated_by, &:updated_by
     column :created_at
@@ -87,6 +116,13 @@ ActiveAdmin.register Prompt do
       row :name
       row :description
       row :category
+      row :tags do |prompt|
+        if prompt.tags_list.any?
+          prompt.tags_list.join(", ").html_safe
+        else
+          span "No tags", class: "text-gray-500"
+        end
+      end
       row :status do |prompt|
         status_tag prompt.status
       end
@@ -172,6 +208,19 @@ ActiveAdmin.register Prompt do
                                 disable_with: "Reverting...",
                                 remote: false
                               })
+
+            # Delete button (only for non-current versions and if more than 1 version exists)
+            if prompt.prompt_versions.count > 1
+              actions << link_to("Delete",
+                                delete_version_admin_prompt_path(prompt, version_number: version.version_number),
+                                method: :delete,
+                                class: "btn btn-sm btn-danger",
+                                data: {
+                                  confirm: "Are you sure you want to permanently delete version #{version.version_number}? This action cannot be undone.",
+                                  disable_with: "Deleting...",
+                                  remote: false
+                                })
+            end
           end
 
           raw actions.join(" ")

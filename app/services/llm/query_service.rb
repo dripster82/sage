@@ -1,37 +1,79 @@
+# frozen_string_literal: true
+
 module Llm
   class QueryService
-    def query_prompts(prompts)
-      # ensure that using threads does not exceed the rate limit
-      
-      max_threads =  ENV.fetch('LLM_QUERY_THREADS', 5).to_i
-      max_per_minute = ENV.fetch('LLM_QUERY_RPM', 20).to_i
-      interval = 60.0 / max_per_minute
-      semaphore = SizedQueue.new(max_threads)
-      last_call_time = Mutex.new
-      last_time = Time.at(0)
+    attr_reader :temperature, :model, :ai_log
 
-      threads = chunks.map do |chunk|
-        Thread.new do
-          semaphore.push(true)  # acquire slot
-          begin
-            last_call_time.synchronize do
-              now = Time.now
-              elapsed = now - last_time
-              if elapsed < interval
-                sleep(interval - elapsed)
-              end
-              last_time = Time.now
-            end
-            chunk.vector = RubyLLM.embed(chunk.text)
-          ensure
-            semaphore.pop       # release slot
-          end
-        end
+    def initialize(temperature: 0.7, model: nil)
+      @temperature = temperature
+      @model = model || RubyLLM.config.default_model
+    end
+
+    def ask(query, chat_id: nil)
+      # Create the AI log entry first
+      @chat = RubyLLM.chat(model: @model).with_temperature(@temperature)
+      @ai_log = create_log_entry(query, chat_id)
+
+      begin
+        # Make the LLM request
+        response = @chat.ask(query)
+
+        # Update the log with response data
+        update_log_with_response(response)
+
+        response
+      rescue => e
+        # Update log with error information
+        update_log_with_error(e)
+        raise e
       end
+    end
 
-      threads.each(&:join)
+    private
 
-      chunks
+    def create_log_entry(query, chat_id)
+      AiLog.create!(
+        model: @model,
+        query: query,
+        chat_id: chat_id,
+        settings: {
+          temperature: @temperature,
+          model: @model
+        }
+      )
+    end
+
+    def update_log_with_response(response)
+      per_token_in = @chat.model.pricing.text_tokens.standard.input_per_million.to_f / 1000000
+      per_token_out = @chat.model.pricing.text_tokens.standard.output_per_million.to_f / 1000000
+      price_in = (response.input_tokens * per_token_in)
+      price_out = (response.output_tokens * per_token_out)
+      @ai_log.update!(
+        response: response.content,
+        input_tokens: response.input_tokens,
+        output_tokens: response.output_tokens,
+        total_cost: price_in + price_out,
+        settings: @ai_log.settings.merge({
+          temperature: @temperature,
+          model:  @chat.model.id,
+          provider: @chat.model.provider,
+          cost_in: price_in,
+          cost_out: price_out,
+          cost_total: price_in + price_out
+        })
+      )
+    end
+
+    def update_log_with_error(error)
+      @ai_log.update!(
+        response: "ERROR: #{error.message}",
+        settings: @ai_log.settings.merge({
+          temperature: @temperature,
+          model: @model,
+          error: error.message,
+          error_class: error.class.name
+        })
+      )
     end
   end
 end

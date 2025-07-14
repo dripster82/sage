@@ -10,8 +10,10 @@ module.exports = {
     './app/views/active_admin/**/*.{arb,erb,html,rb}',
     './app/views/admin/**/*.{arb,erb,html,rb}',
     './app/views/layouts/active_admin*.{erb,html}',
-    './app/javascript/**/*.js'
+    './app/javascript/**/*.js',
+    './app/assets/stylesheets/**/*.{css,scss,sass}'
   ],
+  safelist: [],
   darkMode: "selector",
   plugins: [
     require(`@activeadmin/activeadmin/plugin`)
