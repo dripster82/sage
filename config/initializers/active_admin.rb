@@ -8,7 +8,7 @@ ActiveAdmin.setup do |config|
   # by extracting the _site_header partial into your project
   # to use your own logo, styles, etc.
   #
-  config.site_title = "Active Admin Demo"
+  config.site_title = "Sage Admin"
 
   # == Load Paths
   #

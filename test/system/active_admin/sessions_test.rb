@@ -7,7 +7,7 @@ class SessionsTest < ApplicationSystemTestCase
     visit root_path
 
     assert_current_path new_admin_user_session_path
-    assert_text "Active Admin Demo Sign In"
+    assert_text "Sage Admin Sign In"
   end
 
   test "submitting the login form successfully" do
