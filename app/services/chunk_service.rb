@@ -18,7 +18,7 @@ class ChunkService
       separators: @separators
     )
 
-    splitter.chunks(text).map.with_index do |chunk, position|
+    @document.chunks = splitter.chunks(text).map.with_index do |chunk, position|
       Chunk.new(
         text: chunk[:text],
         file_path: @document.file_path,

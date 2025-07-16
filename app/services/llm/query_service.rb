@@ -29,13 +29,30 @@ module Llm
       end
     end
 
+
+    def  json_from_query(query, chat_id: nil)
+      response = ask(query, chat_id: chat_id)
+      JSON.parse(JSON.repair(strip_formatting(response.content)))
+    end
+
     private
+
+    def strip_formatting(str)
+      str_array = str.split("\n")
+      str_array =  str_array[1..-2] if str_array.first.include?("```")
+
+      first_idx = ["{", "["].include?(str_array.first) ? 0 : 1
+      last_idx = ["}", "]"].include?(str_array.last)  ? -1 : -2
+      
+      str_array[first_idx..last_idx].join("\n") 
+    end
 
     def create_log_entry(query, chat_id)
       AiLog.create!(
         model: @model,
         query: query,
         chat_id: chat_id,
+        session_uuid: Current.ailog_session,
         settings: {
           temperature: @temperature,
           model: @model

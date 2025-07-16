@@ -43,3 +43,5 @@ gem "baran", "~> 0.2.1"
 
 
 gem "activegraph", "= 12.0.0.beta4"
+
+gem "json-repair", "~> 0.2.0"

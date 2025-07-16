@@ -30,6 +30,13 @@ ActiveAdmin.register AiLog do
         span "No chat", class: "text-gray-500"
       end
     end
+    column "Session", :session_uuid do |ai_log|
+      if ai_log.session_uuid.present?
+        ai_log.session_uuid
+      else
+        span "No session id", class: "text-gray-500"
+      end
+    end
     column :tokens do |ai_log|
       if ai_log.has_token_data?
         ai_log.token_summary
@@ -57,6 +64,7 @@ ActiveAdmin.register AiLog do
 
   filter :model
   filter :chat_id
+  filter :session_uuid
   filter :input_tokens
   filter :output_tokens
   filter :created_at
@@ -73,6 +81,13 @@ ActiveAdmin.register AiLog do
           ai_log.chat_id
         else
           span "No chat session", class: "text-gray-500"
+        end
+      end
+      row :session_uuid do |ai_log|
+        if ai_log.session_uuid.present?
+          ai_log.session_uuid
+        else
+          span "No session id", class: "text-gray-500"
         end
       end
       row :input_tokens do |ai_log|
@@ -142,6 +157,7 @@ ActiveAdmin.register AiLog do
     f.inputs "AI Log Details" do
       f.input :model, as: :string, hint: "The AI model used (e.g., gpt-4, claude-3, etc.)"
       f.input :chat_id, as: :number, hint: "Leave blank for standalone queries"
+      f.input :session_uuid, as: :string, hint: "The session UUID for grouping related queries"
       f.input :query, as: :text, input_html: { rows: 8 }, hint: "The input query sent to the AI"
       f.input :response, as: :text, input_html: { rows: 12 }, hint: "The response received from the AI (optional, can be filled later)"
       f.input :input_tokens, as: :number, hint: "Number of input tokens used"

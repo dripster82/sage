@@ -1,20 +1,22 @@
 module Documents
   class ImportService
 
+    attr_accessor :document
     def initialize(file_path)
       @document = Document.new(file_path: file_path)
-      @chunks = nil
     end
 
     def process
+      Current.ailog_session = SecureRandom.uuid 
       read_file
       summerise_doc
       split_text
       embed_chunks
       build_knowledge_graph
+      Current.ailog_session = nil
     end
 
-    private
+    
 
     def summerise_doc
       start_time = Time.now
@@ -24,8 +26,8 @@ module Documents
         h[:text] = @document.text
       end
       prompt_query = prompt.content % replacement_hash
-      @document.summary = Llm::QueryService.new(temperature:0.4).ask(prompt_query).content
-      @document.vector = Llm::EmbeddingService.new.embed_text(@document.summary)
+      @document.summary = Llm::QueryService.new.ask(prompt_query).content
+      @document.vector = Llm::EmbeddingService.new.embed_text(@document.summary).vectors
       
       puts "---"
       puts @document.summary
@@ -36,8 +38,8 @@ module Documents
     def build_knowledge_graph
 
       start_time = Time.now
-      puts "Graphing Chunks(#{@chunks.size})"
-      data = KnowledgeGraph::BuildService.new(@chunks, @document).process
+      puts "Graphing Chunks(#{@document.chunks.size})"
+      data = KnowledgeGraph::BuildService.new(@document).process
       puts "Time to build knowledge graph: #{Time.now - start_time} seconds"
       
       data
@@ -45,8 +47,8 @@ module Documents
 
     def embed_chunks
       start_time = Time.now
-      puts "Embedding Chunks(#{@chunks.size})"
-      Llm::EmbeddingService.new.embed_chunks(@chunks)
+      puts "Embedding Chunks(#{@document.chunks.size})"
+      Llm::EmbeddingService.new.embed_chunks(@document.chunks)
       puts "Time to embed chunks: #{Time.now - start_time} seconds"
     end
 
@@ -54,7 +56,7 @@ module Documents
       start_time = Time.now
       puts "Splitting text from #{@document.file_path}"
       
-      @chunks = ChunkService.new(@document).chunk
+      ChunkService.new(@document).chunk
 
       puts "Time to split text: #{Time.now - start_time} seconds"
     end

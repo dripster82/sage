@@ -1,7 +1,7 @@
 class Document
   include ActiveModel::Model
 
-  attr_accessor :text, :file_path, :summary, :vector
+  attr_accessor :text, :file_path, :summary, :vector, :chunks
 
 
   def source_type
