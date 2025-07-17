@@ -9,7 +9,7 @@ Complete the remaining knowledge graph implementation and management features to
 - [x] **Node and Edge Insertion to KG**
   Complete the core functionality to insert new nodes and edges into the knowledge graph database. Current implementation in `KnowledgeGraph::BuildService` has the code but it's commented out (lines with `# kg_service.query(cypher)`).
 
-- [ ] **Validate Nodes with LLM**
+- [x] **Validate Nodes with LLM**
   Implement a service to validate and clean up extracted nodes using an LLM. Current implementation in `KnowledgeGraph::LlmValidationService` is a start but needs more work.
 
 - [ ] **New Category Approval Table**

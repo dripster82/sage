@@ -3,7 +3,7 @@
 ActiveAdmin.register AiLog do
   menu parent: "Ai Admin"
 
-  permit_params :model, :settings, :query, :response, :chat_id, :input_tokens, :output_tokens
+  permit_params :model, :settings, :query, :response, :chat_id, :input_tokens, :session_uuid, :output_tokens
 
   config.batch_actions = false
 

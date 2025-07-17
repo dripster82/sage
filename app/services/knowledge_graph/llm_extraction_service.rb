@@ -4,10 +4,11 @@ module KnowledgeGraph
     
     def initialize(document)
       @current_doc_schema = {
-        node_types: ["Document", "Statement", "Code", "Project", "Person", "Job Title", "Company", "Coding Pattern", "Platform", "Category", "Entity"], 
+        node_types: %w[ORGANIZATION,PERSON,STATEMENT,PLATFORM,MEDIA_OUTLET,CODE,TECHNOLOGY,COMPANY,PROJECT], 
         edge_types: ["mentioned_in", "used_in", "belongs_to", "works_at", "works_on", "is_a", "discusses"],
         catgegories: ["Code", "Source Document", "Ai", "HR", "Customers"]
       }
+      @node_types = @current_doc_schema[:node_types]
       @document = document
       @chunks = document.chunks
       @nodes_and_edges = []
@@ -18,10 +19,12 @@ module KnowledgeGraph
 
     def process
       extract_nodes_and_edges_from_chunks
+      
+      File.write("chunk_node.txt", JSON.pretty_generate(@nodes_and_edges))
       preprocess_nodes_and_edges
     end
 
-    private
+    # private
 
     def extract_nodes_and_edges_from_chunks
       total_start_time = Time.now
@@ -70,7 +73,7 @@ module KnowledgeGraph
       # create a replacement hash where the hash uses the tagslist as the keys and nil as the values
       replacement_hash = @prompt1.tags_hash.tap do |h|
         h[:text] = sanitized_text(chunk.text)
-        h[:current_schema] = @current_doc_schema.to_json
+        h[:current_schema] = @node_types.join()
         h[:summary] = @document.summary
       end
       prompt1_query = @prompt1.content % replacement_hash
@@ -79,8 +82,9 @@ module KnowledgeGraph
 
       replacement_hash = @prompt2.tags_hash.tap do |h|
         h[:text] = sanitized_text(chunk.text)
+        h[:summary] = @document.summary
         h[:response] = response
-        h[:current_schema] = @current_doc_schema.to_json
+        h[:entity_types] = @current_doc_schema.to_json
       end
       prompt2_query = @prompt2.content % replacement_hash
       Llm::QueryService.new.json_from_query(prompt2_query)
@@ -106,6 +110,7 @@ module KnowledgeGraph
             value.each do |item|
               if key == 'nodes'
                 item['type'] = item['type'].gsub(/\W/,"_").upcase
+                item['name'] = item['name'].titleize
                 existing_node["attributes"]["soft_types"].gsub(/\W/,"_").upcase if item.dig("attributes","soft_types")
                 existing_node = merged_nodes_and_edges[key].find { |node| node['name'] == item['name'] && node['type'] == item['type'] }
                 if existing_node && item.has_key?("attributes") && item["attributes"].any?
@@ -121,6 +126,9 @@ module KnowledgeGraph
               elsif key == 'edges'
                 %w[target_type source_type type].each do |k|
                   item[k] = item[k].gsub(/\W/,"_").upcase if item.has_key?(k)
+                end
+                %w[target source].each do |k|
+                  item[k] = item[k].titleize if item.has_key?(k)
                 end
                 existing_edge = merged_nodes_and_edges[key].find { |edge|
                   %w[source target target_type source_type type].all? do |k|

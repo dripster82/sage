@@ -10,12 +10,17 @@ module KnowledgeGraph
     end
 
     def process
-      process_with_llm 
-      validate_node_categories
-
-      # File.write("tmp/cyphers.cypher", JSON.pretty_generate(@nodes_and_edges))
-      # raise "END"
+      process_with_llm   
+      # validate_node_categories
+      validate_nodes_with_llm
       save_chunk_nodes_and_edges 
+    end
+    
+    private
+
+    def validate_nodes_with_llm
+      llm_validation_service = KnowledgeGraph::LlmValidationService.new(@nodes_and_edges)
+      @nodes_and_edges = llm_validation_service.validate_nodes
     end
 
     def validate_node_categories
@@ -72,7 +77,7 @@ module KnowledgeGraph
         debug_log "Error: #{e.message}"
         debug_log e.backtrace.join("\n")
       end
-
+      File.write("final_cyphers.txt", @cyphers.join("\n"))
       debug_log "Cyphers saved"
     end
 
@@ -89,12 +94,10 @@ module KnowledgeGraph
       TEMPLATE
       edges_cyphers = @nodes_and_edges["edges"].each_with_object([]) do |edge, cyphers|
         attribute_pattern = nil
-        if edge.has_key?("attributes") && edge["attributes"].any?
-          attributes = edge["attributes"].map do |key, value| 
-            val = value.is_a?(String) ? value.gsub('"', '\"') : value
-            "r.#{key.downcase} = \"#{val}\"" 
-          end.join(", ")
-          attribute_pattern = attributes_clause % { attributes: attributes }
+        if edge.has_key?("relationship_description")
+          relationship_description = edge["relationship_description"]
+          relationship_description = relationship_description.is_a?(String) ? relationship_description.gsub('"', '\"') : relationship_description
+          attribute_pattern = attributes_clause % { attributes: "r.description = \"#{relationship_description}\"" }
         end
         debug_log "Edge: #{edge}"
         cypher = edge_template % { 
@@ -102,7 +105,7 @@ module KnowledgeGraph
           source_name: edge["source"].gsub('"', '\"'), 
           target_type: edge["target_type"].upcase, 
           target_name: edge["target"].gsub('"', '\"'), 
-          type: edge["type"].upcase, 
+          type: edge["relationship_type"], 
           attributes_clause: attribute_pattern 
         }
         cyphers << cypher.strip + ";"
@@ -127,13 +130,10 @@ module KnowledgeGraph
       
       node_cyphers = @nodes_and_edges["nodes"].each_with_object([]) do |node, cyphers|
         attribute_pattern = nil
-
-        if node.has_key?("attributes") && node["attributes"].any?
-          attributes = node["attributes"].map do |key, value| 
-            val = value.is_a?(String) ? value.gsub('"', '\"') : value
-            "n.#{key.downcase} = \"#{val}\"" 
-          end.join(", ")
-          attribute_pattern = attributes_clause % { attributes: attributes }
+        if node.has_key?("description")
+          description = node["description"]
+          description = description.is_a?(String) ? description.gsub('"', '\"') : description
+          attribute_pattern = attributes_clause % { attributes: "n.description = \"#{description}\"" }
         end
         cypher = node_template % { type: node["type"].upcase, name: node["name"].gsub('"', '\"'), attributes_clause: attribute_pattern }
         cyphers << cypher.strip + ";"
