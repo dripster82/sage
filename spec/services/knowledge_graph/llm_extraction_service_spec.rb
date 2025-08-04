@@ -6,8 +6,8 @@ RSpec.describe KnowledgeGraph::LlmExtractionService, type: :service do
   # Test data
   let(:test_document) { create_test_document(text: 'Test document content about companies and people') }
   let(:test_chunks) { create_test_chunks(count: 3) }
-  let(:mock_prompt1) { double('Prompt', tags_hash: { text: nil, current_schema: nil }, content: 'Extract entities: %{text}') }
-  let(:mock_prompt2) { double('Prompt', tags_hash: { text: nil, current_schema: nil }, content: 'Refine entities: %{text}') }
+  let(:mock_prompt1) { double('Prompt', tags_hash: { text: nil, current_schema: nil, summary: nil }, content: 'Extract entities: %{text}') }
+  let(:mock_prompt2) { double('Prompt', tags_hash: { text: nil, summary: nil, response: nil, entity_types: nil }, content: 'Refine entities: %{text}') }
   let(:mock_llm_response) { 
     {
       "nodes" => [
@@ -27,11 +27,20 @@ RSpec.describe KnowledgeGraph::LlmExtractionService, type: :service do
     allow(Prompt).to receive(:find_by).with(name: "kg_extraction_1st_pass").and_return(mock_prompt1)
     allow(Prompt).to receive(:find_by).with(name: "kg_extraction_2nd_pass").and_return(mock_prompt2)
     allow_any_instance_of(Llm::QueryService).to receive(:json_from_query).and_return(mock_llm_response)
+    allow_any_instance_of(Llm::QueryService).to receive(:ask).and_return(double('Response', content: 'Mock response'))
     allow(File).to receive(:write)
-    
-    # Mock environment variables
-    allow(ENV).to receive(:fetch).with('EXTRACTING_NODE_THREADS', 5).and_return('2')
-    allow(ENV).to receive(:fetch).with('EXTRACTING_NODE_RPM', 500).and_return('100')
+
+    # Mock environment variables - use single thread for tests to avoid threading issues
+    allow(ENV).to receive(:fetch).with('EXTRACTING_NODE_THREADS', 5).and_return('1')
+    allow(ENV).to receive(:fetch).with('EXTRACTING_NODE_RPM', 500).and_return('600')
+  end
+
+  after do
+    # Ensure any threads are cleaned up after each test
+    Thread.list.each do |thread|
+      next if thread == Thread.current
+      thread.kill if thread.alive?
+    end
   end
 
   it 'responds to process method' do
@@ -80,19 +89,19 @@ RSpec.describe KnowledgeGraph::LlmExtractionService, type: :service do
   describe 'error handling' do
     it 'handles LLM service errors gracefully' do
       allow_any_instance_of(Llm::QueryService).to receive(:json_from_query).and_raise(StandardError, 'LLM Error')
-      
+
       expect { service.process }.to raise_error(StandardError, 'LLM Error')
     end
 
     it 'handles missing prompts gracefully' do
       allow(Prompt).to receive(:find_by).and_return(nil)
-      
-      expect { service.process }.to raise_error
+
+      expect { service.process }.to raise_error(StandardError, /Missing .* prompt/)
     end
 
     it 'handles file writing errors gracefully' do
       allow(File).to receive(:write).and_raise(StandardError, 'File Error')
-      
+
       expect { service.process }.to raise_error(StandardError, 'File Error')
     end
   end

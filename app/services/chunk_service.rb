@@ -15,7 +15,11 @@ class ChunkService
   end
 
   def chunk(text = @document.text, size: nil, overlap: nil, seperators: nil)
-    raise ArgumentError, "Size must be greater than overlap" if size <= overlap
+    # Use defaults if not provided
+    actual_size = size || @chunk_size
+    actual_overlap = overlap || @chunk_overlap
+
+    raise ArgumentError, "Size must be greater than overlap" if actual_size <= actual_overlap
 
     # Handle nil or empty text
     if text.nil? || text.empty?
@@ -24,8 +28,8 @@ class ChunkService
     end
 
     splitter = Baran::RecursiveCharacterTextSplitter.new(
-      chunk_size: size || @chunk_size,
-      chunk_overlap: overlap || @chunk_overlap,
+      chunk_size: actual_size,
+      chunk_overlap: actual_overlap,
       separators: seperators || @separators
     )
 

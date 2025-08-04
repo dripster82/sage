@@ -28,6 +28,16 @@ require 'database_cleaner/active_record'
 #
 Rails.root.glob('spec/support/**/*.rb').sort_by(&:to_s).each { |f| require f }
 
+# Suppress JSON duplicate key warnings in test environment
+# This prevents warnings from JSON.parse when LLM responses contain duplicate keys
+if defined?(JSON)
+  original_parse = JSON.method(:parse)
+  JSON.define_singleton_method(:parse) do |source, opts = {}|
+    opts = opts.merge(allow_duplicate_key: true) if opts.is_a?(Hash)
+    original_parse.call(source, opts)
+  end
+end
+
 # Checks for pending migrations and applies them before tests are run.
 # If you are not using ActiveRecord, you can remove these lines.
 begin

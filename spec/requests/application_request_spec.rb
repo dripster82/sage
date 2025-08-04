@@ -73,4 +73,68 @@ RSpec.describe 'Application Routes', type: :request do
       expect(response).to have_http_status(expected_redirect_status)
     end
   end
+
+  describe 'security headers' do
+    describe 'content security policy configuration' do
+      # Note: In test environment, CSP headers may not be fully applied
+      # These tests verify the CSP configuration is properly set up
+
+      it 'has CSP configured at application level' do
+        expect(Rails.application.config.content_security_policy).to be_present
+        expect(Rails.application.config.content_security_policy_report_only).to be true
+      end
+
+      it 'CSP policy contains expected directives' do
+        policy = Rails.application.config.content_security_policy
+        policy_string = policy.build(ActionDispatch::Request.new({}))
+
+        # Test each directive from the configuration
+        expect(policy_string).to include("default-src 'self' https:")
+        expect(policy_string).to include("font-src 'self' https: data:")
+        expect(policy_string).to include("img-src 'self' https: data:")
+        expect(policy_string).to include("object-src 'none'")
+        expect(policy_string).to include("script-src 'self' https:")
+        expect(policy_string).to include("style-src 'self' https:")
+      end
+
+      it 'nonce generator is configured correctly' do
+        nonce_generator = Rails.application.config.content_security_policy_nonce_generator
+        expect(nonce_generator).to be_present
+
+        # Test nonce generation
+        mock_request = double('Request', session: double('Session', id: 'test-session'))
+        nonce = nonce_generator.call(mock_request)
+        expect(nonce).to eq('test-session')
+      end
+
+      it 'nonce directives are configured for script and style sources' do
+        nonce_directives = Rails.application.config.content_security_policy_nonce_directives
+        expect(nonce_directives).to include('script-src')
+        expect(nonce_directives).to include('style-src')
+      end
+
+      context 'security considerations' do
+        let(:policy_string) { Rails.application.config.content_security_policy.build(ActionDispatch::Request.new({})) }
+
+        it 'blocks object-src completely for security' do
+          expect(policy_string).to include("object-src 'none'")
+        end
+
+        it 'allows HTTPS sources for resource loading' do
+          expect(policy_string).to include('https:')
+        end
+
+        it 'allows data URIs only for fonts and images' do
+          expect(policy_string).to match(/font-src[^;]*data:/)
+          expect(policy_string).to match(/img-src[^;]*data:/)
+          expect(policy_string).not_to match(/script-src[^;]*data:/)
+          expect(policy_string).not_to match(/style-src[^;]*data:/)
+        end
+
+        it 'is configured in report-only mode for gradual implementation' do
+          expect(Rails.application.config.content_security_policy_report_only).to be true
+        end
+      end
+    end
+  end
 end

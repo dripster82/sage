@@ -139,6 +139,49 @@ RSpec.describe ApplicationController, type: :controller do
       expect(Rails.application.config).to respond_to(:content_security_policy)
       expect(Rails.application.config).to respond_to(:content_security_policy_report_only)
     end
+
+    it 'is configured in report-only mode' do
+      expect(Rails.application.config.content_security_policy_report_only).to be true
+    end
+
+    it 'has nonce generator configured' do
+      expect(Rails.application.config.content_security_policy_nonce_generator).to be_present
+    end
+
+    it 'has nonce directives configured for script-src and style-src' do
+      expected_directives = %w(script-src style-src)
+      expect(Rails.application.config.content_security_policy_nonce_directives).to eq(expected_directives)
+    end
+
+    context 'CSP middleware integration' do
+      # Note: CSP headers are added by Rails middleware, not directly by controllers
+      # In test environment, middleware may not be fully active
+
+      it 'has CSP middleware configured in Rails stack' do
+        # Verify CSP is configured at the application level
+        expect(Rails.application.config.content_security_policy).to be_present
+        expect(Rails.application.config.content_security_policy_report_only).to be true
+      end
+
+      it 'nonce generator works with request context' do
+        # Test the nonce generator directly
+        nonce_generator = Rails.application.config.content_security_policy_nonce_generator
+        mock_request = double('Request', session: double('Session', id: 'test-session'))
+
+        nonce = nonce_generator.call(mock_request)
+        expect(nonce).to eq('test-session')
+      end
+
+      it 'CSP policy can be built for requests' do
+        # Test that the policy can be built with a request context
+        policy = Rails.application.config.content_security_policy
+        mock_request = double('Request', session: double('Session', id: 'test-session'))
+
+        policy_string = policy.build(mock_request)
+        expect(policy_string).to include("script-src 'self' https:")
+        expect(policy_string).to include("style-src 'self' https:")
+      end
+    end
   end
 
   describe 'session handling' do

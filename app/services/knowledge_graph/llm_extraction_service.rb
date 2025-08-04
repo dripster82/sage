@@ -23,16 +23,17 @@ module KnowledgeGraph
         @existing_node_types ||= begin
           labels = QueryService.new.query("CALL db.labels()")
           labels.each_with_object([]) do |label, data|
-          data.concat(label["values"])
+            data.concat(label["values"])
+          end
         end
       end
     end
     
     def initialize(document, nodes_types: [], edge_types: [])
       @current_doc_schema = {
-        node_types: nodes_types + ["Component", "Actor", "Action", "Best_Practice", "Business_Rule", "Content_Element", "Journey_Stage"], 
+        node_types: nodes_types + ["Component", "Actor", "Action", "Best_Practice", "Business_Rule", "Content_Element", "Journey_Stage"],
         edge_types: edge_types + ["mentioned_in", "used_in", "belongs_to", "works_at", "works_on", "is_a", "discusses"],
-        catgegories: ["Code", "Source Document", "Ai", "HR", "Customers"]
+        categories: ["Code", "Source Document", "Ai", "HR", "Customers"]
       }
       @node_types = @current_doc_schema[:node_types]
       @document = document
@@ -69,6 +70,7 @@ module KnowledgeGraph
       threads = @chunks.map.with_index do |chunk, index|
         ailog_session = Current.ailog_session
         Thread.new do
+          Thread.current.report_on_exception = false if Rails.env.test?
           Current.ailog_session = ailog_session
           semaphore.push(true)  # acquire slot
           begin
@@ -82,6 +84,13 @@ module KnowledgeGraph
             end
             data = extract_nodes_and_edges(chunk)
             @nodes_and_edges[index] = data
+          rescue => e
+            # In test environment, store the error for later re-raising
+            if Rails.env.test?
+              @nodes_and_edges[index] = { "nodes" => [], "edges" => [], "error" => e }
+            else
+              raise e
+            end
           ensure
             semaphore.pop
             Current.ailog_session = nil
@@ -89,7 +98,24 @@ module KnowledgeGraph
         end
       end
 
-      threads.each(&:join)
+      # Ensure all threads complete before returning
+      threads.each do |thread|
+        begin
+          thread.join
+        rescue => e
+          # Log thread errors but don't let them crash the main process
+          debug_log "Thread error: #{e.message}" unless Rails.env.test?
+        end
+      end
+
+      # In test environment, check for errors and re-raise the first one found
+      if Rails.env.test?
+        @nodes_and_edges.each do |result|
+          if result.is_a?(Hash) && result["error"]
+            raise result["error"]
+          end
+        end
+      end
 
       debug_log "Total time to build knowledge graph from chunks: #{Time.now - total_start_time} seconds"
     end

@@ -126,14 +126,14 @@ RSpec.describe KnowledgeGraph::LlmValidationService, type: :service do
 
     it 'handles missing prompts gracefully' do
       allow(Prompt).to receive(:find_by).and_return(nil)
-      
-      expect { service.validate_nodes }.to raise_error
+
+      expect { service.validate_nodes }.to raise_error(NoMethodError)
     end
 
     it 'handles malformed node mapping data' do
       allow_any_instance_of(Llm::QueryService).to receive(:json_from_query).and_return("invalid data")
-      
-      expect { service.validate_nodes }.to raise_error
+
+      expect { service.validate_nodes }.to raise_error(NoMethodError)
     end
   end
 
