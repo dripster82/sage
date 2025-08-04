@@ -37,7 +37,7 @@ module KnowledgeGraph
 
       @nodes_and_edges["nodes"].each do |node|
         node_key = "#{node['name']}|#{node['type']}"
-        next if
+
         # If this is an orig_node that needs to be replaced
         if node_mapping.key?(node_key) && !new_node_lookup.key?(node_key)
           orig_nodes_to_remove << node

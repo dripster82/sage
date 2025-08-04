@@ -1,4 +1,4 @@
-require "pdf_reader"
+require "pdf-reader"
 
 module FileProcessor
   class Pdf
@@ -8,7 +8,7 @@ module FileProcessor
       # Parse the document and return the text
       # @param [File] data
       # @return [String]
-      def parse(data)
+      def self.parse(data)
         ::PDF::Reader
           .new(StringIO.new(data.read))
           .pages

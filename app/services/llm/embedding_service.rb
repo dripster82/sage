@@ -1,5 +1,10 @@
 module Llm
   class EmbeddingService
+    # Alias for embed_chunks to satisfy service object interface
+    def call(chunks)
+      embed_chunks(chunks)
+    end
+
     def embed_chunks(chunks)
       # ensure that using threads does not exceed the rate limit
       

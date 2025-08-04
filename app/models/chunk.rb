@@ -1,5 +1,9 @@
 class Chunk
   include ActiveModel::Model
+  include ActiveModel::Attributes
 
-  attr_accessor :text, :file_path, :position, :vector
+  attribute :text, :string
+  attribute :file_path, :string
+  attribute :position, :integer
+  attribute :vector
 end

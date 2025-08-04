@@ -22,6 +22,11 @@ gem "tzinfo-data", platforms: %i[ windows jruby ]
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ]
+
+  # RSpec testing framework
+  gem "rspec-rails", "~> 6.0"
+  gem "factory_bot_rails", "~> 6.2"
+  gem "faker", "~> 3.2"
 end
 
 group :test do
@@ -30,9 +35,16 @@ group :test do
   gem "selenium-webdriver"
   gem "simplecov", require: false
   gem "simplecov-cobertura"
+  gem "rails-controller-testing"
+
+  # Additional RSpec testing gems
+  gem "shoulda-matchers", "~> 5.3"
+  gem "webmock", "~> 3.18"
+  gem "vcr", "~> 6.2"
+  gem "database_cleaner-active_record", "~> 2.1"
 end
 
-gem "pdf_reader", "~> 0.0.1"
+gem "pdf-reader", "~> 2.0"
 
 gem "mime-types", "~> 3.7"
 

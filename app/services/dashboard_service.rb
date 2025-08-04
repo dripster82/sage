@@ -5,10 +5,24 @@ class DashboardService
     @current_time = Time.current
   end
 
+  # Service object interface
+  def call
+    kpi_metrics
+  end
+
   def kpi_metrics
     [
       this_month_cost_data,
       last_month_cost_data,
+      placeholder_metric("Metric 3", "?", "purple"),
+      placeholder_metric("Metric 4", "?", "yellow"),
+      placeholder_metric("Metric 5", "?", "red")
+    ]
+  rescue => e
+    # Return placeholder metrics if there's an error
+    [
+      placeholder_metric("Total Cost (This Month)", "?", "green"),
+      placeholder_metric("Total Cost (Last Month)", "?", "blue"),
       placeholder_metric("Metric 3", "?", "purple"),
       placeholder_metric("Metric 4", "?", "yellow"),
       placeholder_metric("Metric 5", "?", "red")
@@ -21,7 +35,7 @@ class DashboardService
     cost = calculate_cost_for_period(this_month_range)
     {
       value: cost,
-      formatted: format_cost(cost),
+      formatted: "$#{format_cost(cost)}",
       label: "Total Cost (This Month)",
       symbol: "$",
       color: "green"
@@ -32,19 +46,19 @@ class DashboardService
     cost = calculate_cost_for_period(last_month_range)
     {
       value: cost,
-      formatted: format_cost(cost),
+      formatted: "$#{format_cost(cost)}",
       label: "Total Cost (Last Month)",
       symbol: "$",
       color: "blue"
     }
   end
 
-  def placeholder_metric(label, symbol, color)
+  def placeholder_metric(label, value, color)
     {
-      value: nil,
-      formatted: "TBA",
+      value: value,
+      formatted: value,
       label: label,
-      symbol: symbol,
+      symbol: "",
       color: color
     }
   end
@@ -62,11 +76,11 @@ class DashboardService
   end
 
   def format_cost(cost)
-    return "$0.00" unless cost&.positive?
+    return "0.00" unless cost&.positive?
     if cost >= 0.01
-      "$#{'%.2f' % cost}"
+      '%.2f' % cost
     else
-      return " > $0.01"
+      return " > 0.01"
     end
   end
 end

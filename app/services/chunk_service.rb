@@ -1,7 +1,7 @@
 require "baran"
 
 class ChunkService
-  
+
   def initialize(document, chunk_size: 1000, chunk_overlap: 100, separators: ["\n\n", "\n", " ", ""])
     @chunk_size = chunk_size
     @chunk_overlap = chunk_overlap
@@ -9,13 +9,24 @@ class ChunkService
     @document = document
   end
 
-  def chunk(text = @document.text, size: 1000, overlap: 100)
+  # Service object interface
+  def call(text = nil)
+    chunk(text)
+  end
+
+  def chunk(text = @document.text, size: nil, overlap: nil, seperators: nil)
     raise ArgumentError, "Size must be greater than overlap" if size <= overlap
-  
+
+    # Handle nil or empty text
+    if text.nil? || text.empty?
+      @document.chunks = []
+      return
+    end
+
     splitter = Baran::RecursiveCharacterTextSplitter.new(
-      chunk_size: @chunk_size,
-      chunk_overlap: @chunk_overlap,
-      separators: @separators
+      chunk_size: size || @chunk_size,
+      chunk_overlap: overlap || @chunk_overlap,
+      separators: seperators || @separators
     )
 
     @document.chunks = splitter.chunks(text).map.with_index do |chunk, position|
