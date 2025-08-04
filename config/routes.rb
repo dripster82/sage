@@ -10,5 +10,22 @@ Rails.application.routes.draw do
 
   root to: redirect("admin")
 
+  # API routes
+  namespace :api do
+    namespace :v1 do
+      # Authentication routes
+      namespace :admin_users do
+        post 'login', to: 'sessions#create'
+        post 'refresh', to: 'tokens#refresh'
+      end
+
+      resources :prompts, only: [] do
+        collection do
+          post :process_prompt, path: 'process'
+        end
+      end
+    end
+  end
+
   match "*unmatched", to: "application#route_not_found", via: :all
 end
