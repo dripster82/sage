@@ -17,6 +17,8 @@ Rails.application.routes.draw do
       namespace :admin_users do
         post 'login', to: 'sessions#create'
         post 'refresh', to: 'tokens#refresh'
+        post 'logout', to: 'logout#logout'
+        post 'logout_all', to: 'logout#logout_all'
       end
 
       resources :prompts, only: [] do

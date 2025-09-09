@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_16_110347) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_04_164846) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -97,8 +97,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_16_110347) do
     t.index ["updated_by_id"], name: "index_prompts_on_updated_by_id"
   end
 
+  create_table "token_families", force: :cascade do |t|
+    t.string "family_id", null: false
+    t.bigint "admin_user_id", null: false
+    t.string "latest_token_id", null: false
+    t.integer "version", default: 1, null: false
+    t.string "device_fingerprint", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["admin_user_id", "device_fingerprint"], name: "index_token_families_on_admin_user_id_and_device_fingerprint"
+    t.index ["admin_user_id"], name: "index_token_families_on_admin_user_id"
+    t.index ["family_id"], name: "index_token_families_on_family_id", unique: true
+  end
+
   add_foreign_key "prompt_versions", "admin_users", column: "created_by_id"
   add_foreign_key "prompt_versions", "prompts"
   add_foreign_key "prompts", "admin_users", column: "created_by_id"
   add_foreign_key "prompts", "admin_users", column: "updated_by_id"
+  add_foreign_key "token_families", "admin_users"
 end

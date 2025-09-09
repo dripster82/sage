@@ -10,9 +10,20 @@ module Api
             admin_user = AdminUser.find_for_database_authentication(email: params[:email])
 
             if admin_user&.valid_password?(params[:password])
-              token = token_service.encode_user_token(admin_user.id)
-              refresh_token = token_service.encode_refresh_token(admin_user.id) # New method for refresh token
-              render json: { auth_token: token, refresh_token: refresh_token }, status: :ok
+              # Check for legacy client support
+              if request.headers['X-Legacy-Client'] == 'true'
+                # Legacy token generation for backward compatibility
+                token = token_service.encode_user_token(admin_user.id)
+                refresh_token = token_service.encode_refresh_token(admin_user.id)
+                render json: { auth_token: token, refresh_token: refresh_token }, status: :ok
+              else
+                # Generate device fingerprint from server-side request data
+                device_fingerprint = DeviceFingerprintService.generate_from_request(request)
+
+                # New device-bound token generation
+                tokens = token_service.issue_token_with_rotation(admin_user, device_fingerprint)
+                render json: { auth_token: tokens[:access_token], refresh_token: tokens[:refresh_token] }, status: :ok
+              end
             else
               render json: { error: "Invalid email or password" }, status: :unauthorized
             end

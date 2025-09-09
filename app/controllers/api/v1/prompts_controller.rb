@@ -9,8 +9,7 @@ module Api
       # Handle specific errors from the PromptProcessingService
       # Order matters: more specific errors should come before general ones
       rescue_from PromptProcessingService::PromptNotFoundError, with: :handle_prompt_not_found
-      rescue_from PromptProcessingService::MissingParameterError, with: :handle_missing_parameter
-
+      
       def process_prompt
         validate_required_params
         
@@ -35,7 +34,6 @@ module Api
 
       def validate_required_params
         raise PromptProcessingService::MissingParameterError, 'Prompt parameter is required' if params[:prompt].blank?
-        raise PromptProcessingService::MissingParameterError, 'Query parameter is required' if params[:query].blank?
       end
 
       def create_processing_service

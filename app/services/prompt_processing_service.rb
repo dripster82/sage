@@ -3,7 +3,6 @@
 class PromptProcessingService
   # Custom error classes
   class PromptNotFoundError < StandardError; end
-  class MissingParameterError < StandardError; end
 
   attr_reader :temperature, :model
 
@@ -54,7 +53,6 @@ class PromptProcessingService
 
   def validate_parameters(params)
     raise MissingParameterError, 'Prompt key is required' if params[:prompt_key].blank?
-    raise MissingParameterError, 'Query is required' if params[:query].blank?
   end
 
   def find_prompt(prompt_key)

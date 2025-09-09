@@ -14,21 +14,74 @@ RSpec.describe Api::V1::AdminUsers::SessionsController, type: :controller do
         }
       end
 
-      it 'returns JWT tokens' do
+      before do
+        # Set up request headers for device fingerprinting
+        request.headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        request.headers['Accept-Language'] = 'en-US,en;q=0.9'
+        request.headers['Accept-Encoding'] = 'gzip, deflate, br'
+      end
+
+      it 'returns JWT tokens with device binding' do
         post :create, params: valid_params, format: :json
-        
+
         expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
-        
+
         expect(json_response['auth_token']).to be_present
         expect(json_response['refresh_token']).to be_present
-        
+
         # Verify the tokens are valid
         decoded_auth_token = AdminUsers::TokenService.decode_token(json_response['auth_token'])
         decoded_refresh_token = AdminUsers::TokenService.decode_token(json_response['refresh_token'])
-        
+
         expect(decoded_auth_token['admin_user_id']).to eq(admin_user.id)
         expect(decoded_refresh_token['admin_user_id']).to eq(admin_user.id)
+        expect(decoded_refresh_token['device_fingerprint']).to be_present
+        expect(decoded_refresh_token['family_id']).to be_present
+        expect(decoded_refresh_token['token_id']).to be_present
+        expect(decoded_refresh_token['version']).to eq(1)
+      end
+
+      it 'creates a token family record' do
+        expect {
+          post :create, params: valid_params, format: :json
+        }.to change { TokenFamily.count }.by(1)
+
+        token_family = TokenFamily.last
+        expect(token_family.admin_user).to eq(admin_user)
+        expect(token_family.device_fingerprint).to be_present
+        expect(token_family.version).to eq(1)
+      end
+    end
+
+
+
+    context 'with legacy token format (backward compatibility)' do
+      let(:valid_params) do
+        {
+          email: admin_user.email,
+          password: 'password123'
+        }
+      end
+
+      before do
+        # Simulate legacy request without device fingerprint header
+        request.headers['X-Legacy-Client'] = 'true'
+      end
+
+      it 'returns legacy tokens for backward compatibility' do
+        post :create, params: valid_params, format: :json
+
+        expect(response).to have_http_status(:ok)
+        json_response = JSON.parse(response.body)
+
+        expect(json_response['auth_token']).to be_present
+        expect(json_response['refresh_token']).to be_present
+
+        # Verify legacy tokens don't have device binding metadata
+        decoded_refresh_token = AdminUsers::TokenService.decode_token(json_response['refresh_token'])
+        expect(decoded_refresh_token['family_id']).to be_nil
+        expect(decoded_refresh_token['device_fingerprint']).to be_nil
       end
     end
 
