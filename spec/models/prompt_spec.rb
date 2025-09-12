@@ -10,6 +10,7 @@ RSpec.describe Prompt, type: :model do
   describe 'associations' do
     it { should belong_to(:created_by).class_name('AdminUser') }
     it { should belong_to(:updated_by).class_name('AdminUser') }
+    it { should belong_to(:allowed_model).optional }
     it { should have_many(:prompt_versions).dependent(:destroy) }
     it { should have_one(:current_version_record).class_name('PromptVersion') }
   end
@@ -196,6 +197,43 @@ RSpec.describe Prompt, type: :model do
         prompt.tags = ['text', 'schema'].to_json
         expected = { text: nil, schema: nil }
         expect(prompt.tags_hash).to eq(expected)
+      end
+    end
+
+    describe '#effective_model' do
+      before do
+        allow(RubyLLM.config).to receive(:default_model).and_return('ruby-llm/default')
+      end
+
+      it 'returns allowed model when active' do
+        allowed_model = create(:allowed_model, model: 'test/model', active: true)
+        prompt.allowed_model = allowed_model
+        expect(prompt.effective_model).to eq('test/model')
+      end
+
+      it 'falls back to default allowed model when prompt model is inactive' do
+        inactive_model = create(:allowed_model, model: 'test/inactive', active: false)
+        default_model = create(:allowed_model, model: 'test/default', active: true, default: true)
+        prompt.allowed_model = inactive_model
+
+        expect(prompt.effective_model).to eq('test/default')
+      end
+
+      it 'falls back to RubyLLM default when no allowed models' do
+        expect(prompt.effective_model).to eq('ruby-llm/default')
+      end
+    end
+
+    describe '#model_display_name' do
+      it 'returns allowed model display name when present' do
+        allowed_model = create(:allowed_model, name: 'Test Model', provider: 'test')
+        prompt.allowed_model = allowed_model
+        expect(prompt.model_display_name).to eq('Test Model (test)')
+      end
+
+      it 'returns default model name when no allowed model' do
+        allow(RubyLLM.config).to receive(:default_model).and_return('ruby-llm/default')
+        expect(prompt.model_display_name).to eq('Default (ruby-llm/default)')
       end
     end
   end

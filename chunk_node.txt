@@ -1,0 +1,20 @@
+[
+  {
+    "entities": [
+      "Person",
+      "Company"
+    ]
+  },
+  {
+    "entities": [
+      "Person",
+      "Company"
+    ]
+  },
+  {
+    "entities": [
+      "Person",
+      "Company"
+    ]
+  }
+]

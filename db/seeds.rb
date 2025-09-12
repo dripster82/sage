@@ -11,6 +11,41 @@
 #   end
 AdminUser.create_with(password: "password", password_confirmation: "password").find_or_create_by!(email: AdminUser::DEFAULT_EMAIL)
 
+# Create allowed models
+if AllowedModel.count == 0
+  puts "Creating allowed models..."
+
+  # Get some popular models from RubyLLM
+  available_models = AllowedModel.available_models_for_dropdown
+
+  # Add some commonly used models
+  models_to_add = [
+    'x-ai/grok-code-fast-1',
+    'anthropic/claude-3.5-sonnet',
+    'openai/gpt-4o',
+    'openai/gpt-4o-mini',
+    'google/gemini-2.5-flash',
+    'deepseek/deepseek-chat'
+  ]
+
+  models_to_add.each_with_index do |model_id, index|
+    model_data = available_models.find { |m| m[:id] == model_id }
+    next unless model_data
+
+    AllowedModel.create!(
+      name: model_data[:name],
+      model: model_data[:id],
+      provider: model_data[:provider],
+      context_size: model_data[:context_size],
+      active: true,
+      default: index == 0 # Make the first one default
+    )
+    puts "Created allowed model: #{model_data[:name]}"
+  end
+
+  puts "Created #{AllowedModel.count} allowed models"
+end
+
 # Create sample prompts
 admin_user = AdminUser.find_by(email: AdminUser::DEFAULT_EMAIL)
 
@@ -26,10 +61,10 @@ if admin_user && Prompt.count == 0
     content: <<~PROMPT,
       Extract knowledge graph nodes and edges from the following text:
       <TEXT START>
-      {{text}}
+      %{text}
       <TEXT END>
 
-      Current schema: {{schema}}
+      Current schema: %{schema}
 
       When using statements, linking to other nodes should be:
       Node - mentioned_in -> Statement
@@ -68,7 +103,7 @@ if admin_user && Prompt.count == 0
     content: <<~PROMPT,
       Please provide a concise summary of the following text:
 
-      {{text}}
+      %{text}
 
       Requirements:
       - Keep the summary under 200 words
@@ -89,8 +124,8 @@ if admin_user && Prompt.count == 0
     content: <<~PROMPT,
       Review the following code and provide feedback:
 
-      ```{{language}}
-      {{code}}
+      ```%{language}
+      %{code}
       ```
 
       Please analyze:

@@ -6,7 +6,7 @@ module Llm
 
     def initialize(temperature: 0.7, model: nil)
       @temperature = temperature
-      @model = model || RubyLLM.config.default_model
+      @model = validate_and_resolve_model(model)
     end
 
     def chat
@@ -94,6 +94,32 @@ module Llm
           error_class: error.class.name
         })
       )
+    end
+
+    def validate_and_resolve_model(model)
+      # If no model specified, use default logic
+      if model.blank?
+        return resolve_fallback_model
+      end
+
+      # Check if the specified model is in the allowed models list
+      allowed_model = AllowedModel.active.find_by(model: model)
+      if allowed_model
+        return model
+      end
+
+      # Log warning and fall back
+      Rails.logger.warn "Model '#{model}' is not in allowed models list, falling back to default"
+      resolve_fallback_model
+    end
+
+    def resolve_fallback_model
+      # Try to get the default allowed model first
+      default_model = AllowedModel.get_default_model
+      return default_model.model if default_model
+
+      # Final fallback to RubyLLM default
+      RubyLLM.config.default_model
     end
   end
 end

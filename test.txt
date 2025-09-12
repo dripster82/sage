@@ -1,2 +1,334 @@
-Pacman is the best game ever
-Mario is so basic
+# Referral Program Components and Best Practices
+
+## Email Communications
+
+### Referrer Auto Invite Email
+
+**Component Type:** Email
+**Trigger:** Real-time after user transaction or on-demand via Buyapowa's sign-ups API
+**Purpose:** Send invites to specific customer subsets
+
+**Best Practices:**
+- Avoid confusing jargon - keep invitations clear, simple, and attractive
+- Message the proposition with a referral cap in mind for powerful 'up to' messaging (e.g., 'Earn up to £500 in rewards' vs 'Get a £10 reward')
+- Use multiple referral language - 'referring friends' not 'a friend' to clarify multiple rewards opportunity
+- Include email address or webpage for customer help in fine print (required in all emails)
+
+---
+
+### Referrer Invite Nurture Email
+
+**Component Type:** Email
+**Purpose:** Re-target users who did not respond to initial Referrer Auto Invite email
+**Behavior:** Optional repeats end once user interacts
+
+**Best Practices:**
+- Write entirely different body content or repeat initial invite approach
+- Use different hero image, subject line, and preview line to avoid repetitive feeling
+- Ensure recipient doesn't feel like they're receiving identical emails repeatedly
+
+---
+
+### Referrer Sign Up Email
+
+**Component Type:** Email
+**Trigger:** Sent after users enter details on Referrer Sign Up Page
+
+**Best Practices:**
+- Message the proposition with referral cap for powerful 'up to' messaging
+- Use multiple referral language - 'referring friends' not 'a friend'
+- Clarify users can refer multiple friends for multiple rewards, not one-and-done activity
+
+---
+
+### Referrer Nurture Email Sequence
+
+**Component Type:** Email sequence
+**Purpose:** Keep referrers engaged and continually sharing their unique link
+**Timing:** Sent at nominated intervals after initial sign up
+
+**Best Practices:**
+- Highlight different rewards or incentives each month with multiple variations
+- Include USPs that referrers can use to entice friends
+- Create different images for each email and vary copy to avoid repetition
+- Work with Buyapowa's Client Success and Content teams for sequence optimization
+
+---
+
+### Friend Instructions Email
+
+**Component Type:** Email
+**Trigger:** Sent after friend submits details on Friend Registration Page
+**Purpose:** Encourage transaction and provide user journey route back
+
+**Best Practices:**
+- Reiterate considered purchase concept - offer locked in for X time period
+- Remind of reward value and brand switching benefits
+- Acknowledge friends unlikely to transact immediately upon receipt
+
+---
+
+### PPT Friend Instructions Email
+
+**Component Type:** Email
+**Trigger:** Sent after friend submits details on Friend Registration Page
+**Purpose:** Encourage transaction and self-reporting to complete referral
+
+**Best Practices:**
+- Provide route back into referral program
+- Reiterate considered purchase concept with time-locked offer
+- Remind of reward value and brand benefits for when ready to transact
+
+---
+
+### PPT Friend Reminder Email
+
+**Component Type:** Email
+**Timing:** Sent at nominated interval after Friend Instruction Email if no self-reporting seen
+**Condition:** Not sent if friend already performed required action
+
+**Best Practices:**
+- Convey stronger urgency element than Friend Instruction Email
+- Position as last chance to convert friend into customer
+- Emphasize urgency in subject, header, and image
+
+---
+
+### Friend Nurture Email Sequence
+
+**Component Type:** Email sequence
+**Purpose:** Remind registered friends about offers and available rewards
+**Behavior:** Automatically stops once friend transacts
+**Requirement:** Must always contain CTA to transact when ready
+
+**Best Practices:**
+- Highlight different rewards or brand USPs monthly with variations
+- Recommend three different emails for optimal sequence
+- Create different images and vary copy to prevent repetition
+- Leverage considered purchase context to keep brand top-of-mind
+
+---
+
+### (P) Friend Nurture Email Sequence
+
+**Component Type:** Email sequence  
+**Purpose:** Remind registered friends about offers and rewards
+**Behavior:** Stops after friend transacts and passes validation
+**Requirement:** Must contain CTA to transact when ready
+
+**Best Practices:**
+- Same as Friend Nurture Email Sequence above
+- Reassure friends who transacted but await validation that rewards come after confirmation
+
+---
+
+### Referrer Pending Email
+
+**Component Type:** Email
+**Trigger:** When friend successfully transacts but referral awaits validation
+
+**Best Practices:**
+- Celebrate success while driving multiple referrals
+- Remind users of total reward value for continued referring
+- Set clear expectations for reward timing, especially if significant waiting period
+
+---
+
+### (P) Referrer Pending Email
+
+**Component Type:** Email
+**Trigger:** When friend successfully signs up but hasn't transacted yet
+
+**Best Practices:**
+- Celebrate success while driving multiple referrals
+- Set expectations about remaining friend steps required
+- Clarify reward timing since referral not yet confirmed
+
+---
+
+### Friend Pending Email
+
+**Component Type:** Email (optional)
+**Trigger:** When friend successfully transacts but referral awaits validation
+
+**Best Practices:**
+- Keep friend informed of reward progress
+- Set expectations for reward timing
+- No action required from friend at this stage
+
+---
+
+### Referrer Claim Reward Email
+
+**Component Type:** Email
+**Trigger:** Upon confirmation of pending referral
+
+**Best Practices:**
+- Include two CTAs: one for Claim Reward page, another for referral dashboard
+- Use email to drive multiple referrals from every referrer
+
+---
+
+### Friend Claim Reward Email
+
+**Component Type:** Email
+**Trigger:** Upon confirmation of pending referral
+
+**Best Practices:**
+- Include two CTAs: one for Claim Reward page, another for referrer sign-up
+- Convert friend into referrer for their own friend invitations
+
+---
+
+### Referrer Reward Delivery Email
+
+**Component Type:** Email (multiple versions required)
+**Trigger:** After referrer selects reward
+**Requirement:** One version per reward type (excluding PayPal)
+**Content:** May contain digital redemption codes or hyperlinks
+
+**Best Practices:**
+- Reference digital codes/links in subject line (e.g., "Your $50 Amazon Gift Card is inside")
+- Include code usage instructions
+- Include CTA linking back to referrer dashboard for repeat referrals
+
+---
+
+### Friend Reward Delivery Email
+
+**Component Type:** Email (multiple versions required)
+**Trigger:** After friend selects reward  
+**Requirement:** One version per reward type (excluding PayPal)
+**Content:** May contain digital redemption codes or hyperlinks
+
+**Best Practices:**
+- Reference digital codes/links in subject line
+- Include CTA to convert friend into referrer
+- Link to dashboard (with active cookie) or Referrer Sign Up Page
+
+---
+
+### Referrer Reward Cap Limit Reached Email
+
+**Component Type:** Email
+**Trigger:** When referrer meets program reward cap
+
+**Best Practices:**
+- Set clear expectations for when rewards can resume
+- Clarify if cap is lifetime or time-based
+
+---
+
+## Web Pages
+
+### Referrer Sign Up Page
+
+**Component Type:** Web page
+**Purpose:** Allow users to sign up for refer-a-friend program
+
+**Best Practices:**
+- Use image and page title for dual headline messaging opportunities
+- Message total 'up to' reward value and per-referral amount separately
+- Use dynamic CTA language like 'Generate my link' vs dry CTAs like 'Submit'
+- Support maximum of 3 steps in instructional text
+
+---
+
+### Referrer Dashboard Page
+
+**Component Type:** Web page
+**Purpose:** Provide signed-up referrers with unique sharing links and referral tracking
+
+**Best Practices:**
+- Default sharing text should reflect friend proposition and risk-free offer
+- Text represents first brand exposure to friends - must entice click-through
+- Follow golden rule: would you be interested if a friend sent this?
+
+---
+
+### Friend Registration Page
+
+**Component Type:** Web page
+**Accessed via:** Referrer's unique link clicks
+
+**Best Practices:**
+- Use 'considered purchase' language acknowledging friends may not be ready to purchase immediately
+- Convince friends to 'lock in offer' by entering details with arbitrary time limit
+- Don't overwhelm with details - focus on compelling image, headline, USPs, rewards, and considered purchase messaging
+- Reference referrer's name for social proof and reassurance
+- Primary goal: get form completion for nurturing until ready to transact
+
+---
+
+### Friend Post-Registration Page
+
+**Component Type:** Web page
+**Purpose:** Confirm successful Friend Registration Page completion and provide next steps
+
+**Best Practices:**
+- Confirm 'offer is locked in' and no immediate transaction requirement
+- Provide purchase journey route for ready users
+- Use single 'shop now' CTA or highlight specific products/packages
+- Absolute limit of 6 CTAs, recommend maximum 3 for simplicity
+
+---
+
+### Friend Self-Reporting Page
+
+**Component Type:** Web page
+**Access:** Immediate after Friend Registration Page submission or via magic link in emails
+**Purpose:** Submit unique identifier for referral tracking
+
+**Best Practices:**
+- Don't overwhelm with details - keep simple for nurturing purposes
+- Reference referrer's name for social proof and reassurance
+- Primary goal: form completion for continued nurturing
+
+---
+
+### Claim Reward Pages
+
+**Component Type:** Web pages
+**Purpose:** Allow referrers and friends to claim rewards via email links
+
+**Best Practices:**
+- Keep reward titles and descriptions brief
+- Support up to 6 reward choices, recommend maximum 3 for tight messaging
+- Manage delivery time expectations for physical rewards
+
+---
+
+### FAQ Page
+
+**Component Type:** Web page
+**Access:** Via 'FAQ' links on Claim Reward pages and other program interfaces
+
+**Best Practices:**
+- Include comprehensive questions and answers covering program mechanics
+- Cover rewards on offer and relevant business rules
+- Don't just repeat examples - customize for your specific program
+
+---
+
+### Terms & Conditions Page
+
+**Component Type:** Web page
+**Access:** Via terms and conditions links on program pages and emails
+**Options:** Host on your website (provide URL) or Buyapowa hosts (provide full copy)
+
+---
+
+## Interactive Features
+
+### Post-Purchase Referrer Popover
+
+**Component Type:** Interactive feature
+**Trigger:** Customer purchase completion
+**Purpose:** Alert and educate about refer-a-friend program opportunities
+
+**Best Practices:**
+- Surface at optimal moment when customer demonstrated purchase willingness
+- Capture high-potential traffic at funnel top
+- Keep simple: headline, brief description, CTA, and fine print
+- Second panel shows unique sharing link with easy copy/share functionality for desktop and mobile
+- Enroll customers immediately while contact information is fresh

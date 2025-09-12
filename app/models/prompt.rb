@@ -4,8 +4,9 @@ class Prompt < ApplicationRecord
   # Associations
   belongs_to :created_by, class_name: 'AdminUser'
   belongs_to :updated_by, class_name: 'AdminUser'
+  belongs_to :allowed_model, optional: true
   has_many :prompt_versions, dependent: :destroy
-  has_one :current_version_record, -> { where(is_current: true) }, 
+  has_one :current_version_record, -> { where(is_current: true) },
           class_name: 'PromptVersion'
 
   # Validations
@@ -98,6 +99,23 @@ class Prompt < ApplicationRecord
 
   def tags_hash
     @tags_hash ||= tags_list.map(&:to_sym).index_with { nil }
+  end
+
+  def effective_model
+    return allowed_model.model if allowed_model&.active?
+
+    # Fallback to default allowed model
+    default_model = AllowedModel.get_default_model
+    return default_model.model if default_model
+
+    # Final fallback to RubyLLM default
+    RubyLLM.config.default_model
+  end
+
+  def model_display_name
+    return allowed_model.display_name if allowed_model
+
+    "Default (#{RubyLLM.config.default_model})"
   end
 
   private

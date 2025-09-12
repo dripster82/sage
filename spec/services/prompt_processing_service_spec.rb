@@ -118,4 +118,53 @@ RSpec.describe PromptProcessingService, type: :service do
       }.to raise_error(PromptProcessingService::MissingParameterError, 'Prompt key is required')
     end
   end
+
+  describe '#resolve_effective_model' do
+    let(:prompt) { create(:prompt) }
+
+    before do
+      allow(RubyLLM.config).to receive(:default_model).and_return('ruby-llm/default')
+    end
+
+    context 'when service has explicit model' do
+      let(:service) { PromptProcessingService.new(model: 'explicit/model') }
+
+      it 'uses explicit model if it is allowed' do
+        create(:allowed_model, model: 'explicit/model', active: true)
+        expect(service.send(:resolve_effective_model, prompt)).to eq('explicit/model')
+      end
+
+      it 'falls back when explicit model is not allowed' do
+        create(:allowed_model, model: 'fallback/model', active: true, default: true)
+        expect(service.send(:resolve_effective_model, prompt)).to eq('fallback/model')
+      end
+    end
+
+    context 'when prompt has assigned model' do
+      it 'uses prompt model if active' do
+        allowed_model = create(:allowed_model, model: 'prompt/model', active: true)
+        prompt.allowed_model = allowed_model
+        expect(service.send(:resolve_effective_model, prompt)).to eq('prompt/model')
+      end
+
+      it 'falls back when prompt model is inactive' do
+        inactive_model = create(:allowed_model, model: 'prompt/model', active: false)
+        default_model = create(:allowed_model, model: 'default/model', active: true, default: true)
+        prompt.allowed_model = inactive_model
+
+        expect(service.send(:resolve_effective_model, prompt)).to eq('default/model')
+      end
+    end
+
+    context 'when falling back to default' do
+      it 'uses default allowed model' do
+        create(:allowed_model, model: 'default/model', active: true, default: true)
+        expect(service.send(:resolve_effective_model, prompt)).to eq('default/model')
+      end
+
+      it 'uses RubyLLM default as final fallback' do
+        expect(service.send(:resolve_effective_model, prompt)).to eq('ruby-llm/default')
+      end
+    end
+  end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_04_164846) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_10_132449) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -55,6 +55,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_04_164846) do
     t.index ["session_uuid"], name: "index_ai_logs_on_session_uuid"
   end
 
+  create_table "allowed_models", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "model", null: false
+    t.boolean "active", default: true, null: false
+    t.string "provider", null: false
+    t.integer "context_size"
+    t.boolean "default", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_allowed_models_on_active"
+    t.index ["default"], name: "index_allowed_models_on_default"
+    t.index ["model"], name: "index_allowed_models_on_model", unique: true
+    t.index ["provider"], name: "index_allowed_models_on_provider"
+  end
+
   create_table "prompt_versions", force: :cascade do |t|
     t.bigint "prompt_id", null: false
     t.integer "version_number", null: false
@@ -89,6 +104,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_04_164846) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "tags"
+    t.bigint "allowed_model_id"
+    t.index ["allowed_model_id"], name: "index_prompts_on_allowed_model_id"
     t.index ["category"], name: "index_prompts_on_category"
     t.index ["created_by_id"], name: "index_prompts_on_created_by_id"
     t.index ["current_version"], name: "index_prompts_on_current_version"
@@ -114,5 +131,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_04_164846) do
   add_foreign_key "prompt_versions", "prompts"
   add_foreign_key "prompts", "admin_users", column: "created_by_id"
   add_foreign_key "prompts", "admin_users", column: "updated_by_id"
+  add_foreign_key "prompts", "allowed_models"
   add_foreign_key "token_families", "admin_users"
 end

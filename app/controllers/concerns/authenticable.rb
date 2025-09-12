@@ -12,7 +12,7 @@ module Authenticable
     token = request.headers["Authorization"]
     if token.present?
       begin
-        if token == "dev" and RAILS_ENV == "development"
+        if token == "dev" && Rails.env.development?
           @current_admin_user = AdminUser.first
           return
         end

@@ -49,6 +49,18 @@ FactoryBot.define do
       end
     end
 
+    trait :with_model do
+      association :allowed_model, factory: :allowed_model
+    end
+
+    trait :with_openai_model do
+      association :allowed_model, factory: [:allowed_model, :openai]
+    end
+
+    trait :with_anthropic_model do
+      association :allowed_model, factory: [:allowed_model, :anthropic]
+    end
+
     # Create associated prompt version after creation
     after(:create) do |prompt|
       # The prompt model automatically creates the first version via callback

@@ -17,8 +17,11 @@ class PromptProcessingService
     prompt = find_prompt(prompt_key)
     processed_prompt = build_processed_prompt(prompt, query, parameters)
 
+    # Resolve the effective model to use
+    effective_model = resolve_effective_model(prompt)
+
     # Use the existing LLM QueryService for the actual query
-    llm_service = Llm::QueryService.new(temperature: @temperature, model: @model)
+    llm_service = Llm::QueryService.new(temperature: @temperature, model: effective_model)
     response = llm_service.ask(processed_prompt, chat_id: chat_id)
 
     {
@@ -36,8 +39,11 @@ class PromptProcessingService
     prompt = find_prompt(prompt_key)
     processed_prompt = build_processed_prompt(prompt, query, parameters)
 
+    # Resolve the effective model to use
+    effective_model = resolve_effective_model(prompt)
+
     # Use the existing LLM QueryService for JSON responses
-    llm_service = Llm::QueryService.new(temperature: @temperature, model: @model)
+    llm_service = Llm::QueryService.new(temperature: @temperature, model: effective_model)
     response = llm_service.json_from_query(processed_prompt, chat_id: chat_id)
 
     {
@@ -62,6 +68,7 @@ class PromptProcessingService
   end
 
   def build_processed_prompt(prompt, query, parameters)
+    
     # Follow the existing pattern from llm_extraction_service and llm_validation_service
     replacement_hash = prompt.tags_hash.tap do |h|
       h[:query] = query
@@ -72,5 +79,28 @@ class PromptProcessingService
     end
 
     prompt.content % replacement_hash
+  end
+
+  def resolve_effective_model(prompt)
+    # 1. If a model was explicitly passed to the service, validate it's allowed
+    if @model.present?
+      allowed_model = AllowedModel.active.find_by(model: @model)
+      return @model if allowed_model
+
+      # Log warning that the passed model is not allowed
+      Rails.logger.warn "Model '#{@model}' is not in allowed models list, falling back to prompt model"
+    end
+
+    # 2. Use the prompt's assigned model if it exists and is active
+    if prompt.allowed_model&.active?
+      return prompt.allowed_model.model
+    end
+
+    # 3. Fall back to the default allowed model
+    default_model = AllowedModel.get_default_model
+    return default_model.model if default_model
+
+    # 4. Final fallback to RubyLLM default
+    RubyLLM.config.default_model
   end
 end

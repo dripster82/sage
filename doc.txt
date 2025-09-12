@@ -1,0 +1,88 @@
+Tracking Voucher Improvement Proposal
+Background
+We use vouchers in 2 ways:
+As a reward for a confirmed referral: reward voucher. This is generally a coupon that can be redeemed with the client
+As a means to track a friend through their journey: tracking voucher. This can either be a random code or in some cases a redeemable coupon.
+Regardless of what a voucher is used for, it is unique per market and they are stored in voucher pools. Voucher pools are configured in co-buying for V1 and V2.
+
+Vouchers themselves have 3 types and can be used for either of the 2 ways above:
+Single use: Can be used to track referrals. Only distributed to one user.
+Single distribution many referrals: Can be used to track referrals. Only distributed to one user but can be used to track multiple referrals.
+Multi use: Can’t be used to track referrals. Can be distributed to multiple users. Even though these can be distributed multiple times, there are some voucher pools of this voucher type that have multiple vouchers uploaded. It’s unclear why this was done and was likely an extreme edge case.
+
+A tracking voucher is distributed to the friend after they’ve been successfully registered. This is also referred to as an incentive across our system.
+
+V1 incentives are configured in co-buying under the Campaign > Set up Journey > Reward & Incentives
+In V2, they are configured in CMS in the Friend Journey > Shared > Voucher Distribution section.
+
+CSMs manage uploading new vouchers to voucher pools. We have various scheduled jobs that look at voucher pool usage and send emails to the CSMs that manage these clients if a pool is about to run out.
+If vouchers are redeemable coupons, they are received from the client and uploaded manually.
+If vouchers are random, CSMs will use a number of free online tools to generate random codes and upload them manually.
+When a V2 campaign is configured to distribute a friend tracking voucher and the pool is empty, an error is shown during friend registration. This error (see below) ends up in Rollbar and isn’t sent to the ClientIssues. This essentially breaks the program until new codes are uploaded.
+
+Problem to solve
+For the case where vouchers are redeemable coupons, we still rely on our clients providing them and someone uploading them to the voucher pool.
+
+However, generating random voucher codes and uploading them is an onerous task for CSMs and one that doesn’t need to be done manually. Relying on this manual process adds fragility to our system. 
+
+Removing this manual process is the purpose of this project.
+Proposal
+Since we need to maintain the ability of uploading vouchers to a voucher pool, for reward vouchers and redeemable tracking vouchers, this functionality will remain. Whether configuring a V1 incentive or V2 tracking voucher distribution, there will still be an option to specify a voucher pool.
+
+This proposal is to add a new concept of voucher source to voucher pools, adding a “generator” source which will automate creating new voucher codes. When creating a voucher pool, the user will be presented with an option to select a voucher source. Once this voucher pool is created, it can be used in incentives like it’s currently done.
+
+Selecting a “manual upload” source will create a pool that functions the same as today. As in, users have to manually upload vouchers and keep them topped up. The voucher pool warning jobs will still send Admin emails if these pools are predicted to run out soon.
+
+Selecting a “generator” source will create an empty voucher pool. At the time a voucher needs to be distributed to a friend, a new voucher code will be created using the generator along with the configured options. 
+
+This voucher source approach is easily extensible. At first, we can start off with a simple voucher generator source with options such as: number of characters… etc (discussed below). Later we could support multiple sources such as ones that call an external API, in the case of amazon vouchers or a client’s API.
+
+However, the focus here will be automating the creation of random code tracking vouchers.
+Current voucher patterns
+A sample voucher code was taken from each voucher pool. It’s not possible to tell which of these were provided by the client (as redeemable vouchers) or which were generated. 
+
+The majority of codes were formatted with a combination of a prefix, random alphanumeric characters (there were no codes that are only alphabet or numeric characters) and a suffix separated by a hyphen or underscore and generally with the same case (all upper or lower case). Number of characters ranged from 5-128.
+Here are some examples:
+RAF-ABC123
+ABC123-RAF
+RAF-ABC123-25
+RAFABC123
+
+There are some cases of urls being used and other outliers but these were likely imported. We should not try to support these formats.
+
+It’s also important to reiterate that codes are unique per market. Looking at existing vouchers, some markets have upwards of 5 million codes. In the case of Betano, these are stored in a single voucher pool. Other voucher pools have upwards of 1 million codes. Generated voucher codes need to have enough characters to support millions of unique codes.
+Generator options
+To support the common voucher code formats above, a generator should have options:
+Prefix - can be any number of characters although we should limit to 16 characters or something not so big.
+Suffix - same as prefix
+Random string number of characters:
+Should only support alphanumeric characters. There are no cases only one or the other and having alphanumeric only will ease requirements to support many unique codes.
+Should be at least 5 which will support over 60 million unique codes and max 16
+Separator - single character input supporting empty string or dropdown with a few options: hyphen, underscore, empty
+Technical design
+Front End
+Selecting a source will happen on this screen in co-buying (where voucher pools are currently configured). Designs TBD. UX will be a new dropdown to select voucher pool source with 2 options: Manual Upload (default) and Generator. If Generator is selected, it should present the user with the options outlined above.
+
+
+
+Back End
+The current implementation is a bit convoluted. The focus will be on unravelling some of the code while adding the new concepts.
+
+The main entry point will be a new interactor VoucherPool::Distribute which will delegate putting a new voucher “on hold” to the VoucherPool which will then delegate to its source_type (enum stored on the VoucherPool record). The source_type will map to either  VoucherPoolSource::ManualUpload or VoucherPoolSource::Generator. After putting a new voucher on hold, VoucherPool::Distribute will call the Voucher’s distribute! method. Voucher subclasses will override distribute! method where needed.
+
+
+
+
+
+
+
+
+There are slight differences between single and multi use vouchers when sourcing a manual upload or a generated code. 
+For multi-use vouchers, it doesn’t really make sense to generate codes since there should only be one that’s used multiple times. We can prevent this combination with AR/form validations.
+When sourcing a single-use manually uploaded voucher, we need to search for vouchers that aren’t distributed. Since this is such a small difference, it should be fine to do in a conditional. Another approach would be for each combination to have its own class. But there isn’t enough difference to warrant that complexity.
+
+Follow up bits
+Update the voucher warning jobs to not run for Generator source_types.
+Class diagram with additions and changes highlighted
+https://miro.com/app/board/uXjVKvHTl9w=/
+

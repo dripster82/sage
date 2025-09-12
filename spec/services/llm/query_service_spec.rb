@@ -381,11 +381,68 @@ RSpec.describe Llm::QueryService, type: :service do
     end
   end
 
+  describe 'model validation and resolution' do
+    before do
+      allow(RubyLLM.config).to receive(:default_model).and_return('ruby-llm/default')
+    end
+
+    describe '#validate_and_resolve_model' do
+      let(:service) { Llm::QueryService.new }
+
+      context 'when no model specified' do
+        it 'uses default allowed model if available' do
+          create(:allowed_model, model: 'default/model', active: true, default: true)
+          service = Llm::QueryService.new(model: nil)
+          expect(service.model).to eq('default/model')
+        end
+
+        it 'falls back to RubyLLM default when no allowed models' do
+          service = Llm::QueryService.new(model: nil)
+          expect(service.model).to eq('ruby-llm/default')
+        end
+      end
+
+      context 'when model is specified' do
+        it 'uses specified model if it is allowed' do
+          create(:allowed_model, model: 'allowed/model', active: true)
+          service = Llm::QueryService.new(model: 'allowed/model')
+          expect(service.model).to eq('allowed/model')
+        end
+
+        it 'falls back when specified model is not allowed' do
+          create(:allowed_model, model: 'default/model', active: true, default: true)
+          service = Llm::QueryService.new(model: 'not-allowed/model')
+          expect(service.model).to eq('default/model')
+        end
+
+        it 'logs warning when falling back from disallowed model' do
+          create(:allowed_model, model: 'default/model', active: true, default: true)
+          expect(Rails.logger).to receive(:warn).with(/not in allowed models list/)
+          Llm::QueryService.new(model: 'not-allowed/model')
+        end
+      end
+    end
+
+    describe '#resolve_fallback_model' do
+      let(:service) { Llm::QueryService.new }
+
+      it 'returns default allowed model when available' do
+        default_model = create(:allowed_model, model: 'default/model', active: true, default: true)
+        expect(service.send(:resolve_fallback_model)).to eq('default/model')
+      end
+
+      it 'returns RubyLLM default when no allowed models' do
+        expect(service.send(:resolve_fallback_model)).to eq('ruby-llm/default')
+      end
+    end
+  end
+
   describe 'integration with RubyLLM' do
     let(:service) { Llm::QueryService.new }
 
-    it 'uses configured default model' do
-      expect(service.model).to eq(RubyLLM.config.default_model)
+    it 'uses resolved model' do
+      allow(RubyLLM.config).to receive(:default_model).and_return('ruby-llm/default')
+      expect(service.model).to eq('ruby-llm/default')
     end
 
     it 'creates chat with RubyLLM' do

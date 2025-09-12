@@ -124,10 +124,12 @@ end
 RSpec.configure do |config|
   config.include TestHelpers::AuthenticationHelpers, type: :controller
   config.include TestHelpers::AuthenticationHelpers, type: :request
+  config.include TestHelpers::AuthenticationHelpers, type: :feature
   config.include TestHelpers::MockHelpers
   config.include TestHelpers::DataHelpers
   config.include TestHelpers::TimeHelpers
   config.include TestHelpers::FileHelpers
   config.include Devise::Test::ControllerHelpers, type: :controller
   config.include Devise::Test::IntegrationHelpers, type: :request
+  config.include Devise::Test::IntegrationHelpers, type: :feature
 end

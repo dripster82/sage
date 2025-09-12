@@ -3,7 +3,7 @@
 ActiveAdmin.register Prompt do
   menu parent: "Ai Admin"
 
-  permit_params :name, :content, :description, :category, :status, :metadata
+  permit_params :name, :content, :description, :category, :status, :metadata, :allowed_model_id
 
   config.batch_actions = false
 
@@ -85,7 +85,14 @@ ActiveAdmin.register Prompt do
     column :status do |prompt|
       status_tag prompt.status
     end
-    column :current_version 
+    column :current_version
+    column :model do |prompt|
+      if prompt.allowed_model
+        prompt.allowed_model.display_name
+      else
+        span "Default (#{RubyLLM.config.default_model})", class: "text-gray-500"
+      end
+    end
     column :tags do |prompt|
       if prompt.tags_list.any?
         prompt.tags_list.join(", ").html_safe
@@ -105,6 +112,7 @@ ActiveAdmin.register Prompt do
   filter :name
   filter :category
   filter :status, as: :select, collection: %w[active inactive draft]
+  filter :allowed_model, as: :select, collection: -> { AllowedModel.active.order(:name).map { |m| [m.display_name, m.id] } }
   filter :created_by
   filter :updated_by
   filter :created_at
@@ -127,6 +135,13 @@ ActiveAdmin.register Prompt do
         status_tag prompt.status
       end
       row :current_version
+      row :model do |prompt|
+        if prompt.allowed_model
+          link_to prompt.allowed_model.display_name, admin_allowed_model_path(prompt.allowed_model)
+        else
+          span "Default (#{RubyLLM.config.default_model})", class: "text-gray-500"
+        end
+      end
       row :content do |prompt|
         simple_format prompt.content
       end
@@ -302,6 +317,10 @@ ActiveAdmin.register Prompt do
       f.input :description, as: :text, input_html: { rows: 2 }
       f.input :category
       f.input :status, as: :select, collection: %w[active inactive draft]
+      f.input :allowed_model, as: :select,
+              collection: AllowedModel.active.order(:name).map { |m| [m.display_name, m.id] },
+              prompt: "Use default model",
+              hint: "Select a specific model for this prompt, or leave blank to use the default model"
       f.input :content, as: :text, input_html: { rows: 25 }
     end
     f.actions
