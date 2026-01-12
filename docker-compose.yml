@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: sage_development
     volumes:
-      - pgdata2:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     ports:
       - "5444:5432"
 
@@ -35,5 +35,7 @@ services:
       - .env
 
 volumes:
-  pgdata2:
+  pgdata:
+    name: sage_pgdata
+    external: true
   neo4jdata:

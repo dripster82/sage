@@ -41,3 +41,6 @@
 /coverage
 
 .bevel/do_not_share
+
+# Database backups (local only, not committed to git)
+/backups

@@ -68,12 +68,21 @@ interaction:
     description: Destroys all services
     # Note: This command is not typically used in production environments.
     # It is used here for demonstration purposes.
-    # It will remove all containers, networks, and volumes defined in the compose file.   
+    # It will remove all containers, networks, and volumes defined in the compose file.
     command: dip compose down --rmi all --volumes web && dip compose down --volumes
+
+  backup:
+    description: Backup the development database
+    command: bash bin/backup-db.sh app_development
+
+  restore:
+    description: Restore database from backup (usage - dip restore <backup_file>)
+    command: bash bin/restore-db.sh
 
 provision:
   # Note: This command will wipe out your db and start fresh. Use with caution.
-  # - docker network inspect sage_default > /dev/null 2>&1 || docker network create sage_default
+  # It now creates a backup before wiping the database!
+  - bash bin/backup-db.sh app_development
   - dip compose down --volumes
   - dip compose up -d db neo4j
   - dip bundle install
