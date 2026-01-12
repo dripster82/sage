@@ -16,7 +16,7 @@ class DashboardService
       last_month_cost_data,
       placeholder_metric("Metric 3", "?", "purple"),
       placeholder_metric("Metric 4", "?", "yellow"),
-      placeholder_metric("Metric 5", "?", "red")
+      openrouter_credits_data
     ]
   rescue => e
     # Return placeholder metrics if there's an error
@@ -25,7 +25,7 @@ class DashboardService
       placeholder_metric("Total Cost (Last Month)", "?", "blue"),
       placeholder_metric("Metric 3", "?", "purple"),
       placeholder_metric("Metric 4", "?", "yellow"),
-      placeholder_metric("Metric 5", "?", "red")
+      placeholder_metric("OpenRouter Credits", "?", "red")
     ]
   end
 
@@ -35,7 +35,7 @@ class DashboardService
     cost = calculate_cost_for_period(this_month_range)
     {
       value: cost,
-      formatted: "$#{format_cost(cost)}",
+      formatted: format_cost(cost),
       label: "Total Cost (This Month)",
       symbol: "$",
       color: "green"
@@ -46,10 +46,21 @@ class DashboardService
     cost = calculate_cost_for_period(last_month_range)
     {
       value: cost,
-      formatted: "$#{format_cost(cost)}",
+      formatted: format_cost(cost),
       label: "Total Cost (Last Month)",
       symbol: "$",
       color: "blue"
+    }
+  end
+
+  def openrouter_credits_data
+    credits = OpenrouterService.credits || 0
+    {
+      value: credits,
+      formatted: format_credits(credits),
+      label: "OpenRouter Credits",
+      symbol: "$",
+      color: "red"
     }
   end
 
@@ -82,5 +93,10 @@ class DashboardService
     else
       return " > 0.01"
     end
+  end
+
+  def format_credits(credits)
+    return "0.00" unless credits&.positive?
+    '%.2f' % credits
   end
 end

@@ -238,13 +238,19 @@ ActiveAdmin.register_page "AI Test" do
 
         .ai-test-response-meta {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 32%));
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
           gap: 16px;
           font-size: 12px;
           color: #6b7280;
           border-top: 1px solid #e5e7eb;
           padding-top: 16px;
           margin-top: 16px;
+        }
+
+        @media (max-width: 768px) {
+          .ai-test-response-meta {
+            grid-template-columns: 1fr;
+          }
         }
 
         .dark .ai-test-response-meta {
@@ -285,6 +291,317 @@ ActiveAdmin.register_page "AI Test" do
 
         .dark .ai-test-meta-value {
           color: #f9fafb;
+        }
+
+        /* Tab styling */
+        .ai-test-tabs {
+          display: flex;
+          border-bottom: 2px solid #e9ecef;
+          margin-bottom: 15px;
+          gap: 0;
+        }
+
+        .dark .ai-test-tabs {
+          border-bottom-color: #4b5563;
+        }
+
+        .ai-test-tab {
+          padding: 10px 20px;
+          background: none;
+          border: none;
+          border-bottom: 2px solid transparent;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          color: #6b7280;
+          transition: all 0.2s ease;
+        }
+
+        .ai-test-tab:hover {
+          color: #374151;
+          background-color: #f9fafb;
+        }
+
+        .ai-test-tab-active {
+          color: #3b82f6 !important;
+          border-bottom-color: #3b82f6 !important;
+          background-color: transparent !important;
+        }
+
+        .dark .ai-test-tab {
+          color: #9ca3af;
+        }
+
+        .dark .ai-test-tab:hover {
+          color: #f3f4f6;
+          background-color: #374151;
+        }
+
+        .dark .ai-test-tab-active {
+          color: #60a5fa !important;
+          border-bottom-color: #60a5fa !important;
+        }
+
+        .ai-test-tab-content {
+          position: relative;
+        }
+
+        .ai-test-tab-pane {
+          display: none;
+        }
+
+        .ai-test-tab-pane-active {
+          display: block !important;
+        }
+
+        .ai-test-raw-text {
+          background-color: #f8f9fa;
+          border: 1px solid #e9ecef;
+          border-radius: 6px;
+          padding: 15px;
+          margin: 0;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 13px;
+          line-height: 1.4;
+          color: #374151;
+          overflow-x: auto;
+        }
+
+        .dark .ai-test-raw-text {
+          background-color: #1f2937;
+          border-color: #374151;
+          color: #f3f4f6;
+        }
+
+        /* Markdown content styling */
+        #markdown-content h1 {
+          font-size: 24px;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 20px 0 16px 0;
+          padding-bottom: 8px;
+          border-bottom: 2px solid #e5e7eb;
+        }
+
+        #markdown-content h2 {
+          font-size: 20px;
+          font-weight: 600;
+          color: #374151;
+          margin: 18px 0 14px 0;
+          padding-bottom: 6px;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        #markdown-content h3 {
+          font-size: 18px;
+          font-weight: 600;
+          color: #374151;
+          margin: 16px 0 12px 0;
+        }
+
+        #markdown-content h4, #markdown-content h5, #markdown-content h6 {
+          font-size: 16px;
+          font-weight: 600;
+          color: #4b5563;
+          margin: 14px 0 10px 0;
+        }
+
+        #markdown-content p {
+          margin: 12px 0;
+          line-height: 1.6;
+          color: #374151;
+        }
+
+        #markdown-content strong {
+          font-weight: 700;
+          color: #1f2937;
+        }
+
+        #markdown-content em {
+          font-style: italic;
+          color: #4b5563;
+        }
+
+        #markdown-content code {
+          background-color: #f3f4f6;
+          border: 1px solid #e5e7eb;
+          border-radius: 4px;
+          padding: 2px 6px;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 13px;
+          color: #dc2626;
+        }
+
+        #markdown-content pre {
+          background-color: #f8f9fa;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          padding: 16px;
+          margin: 16px 0;
+          overflow-x: auto;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 13px;
+          line-height: 1.4;
+        }
+
+        #markdown-content pre code {
+          background: none;
+          border: none;
+          padding: 0;
+          color: #374151;
+        }
+
+        #markdown-content ul, #markdown-content ol {
+          margin: 12px 0;
+          padding-left: 24px;
+        }
+
+        #markdown-content li {
+          margin: 6px 0;
+          line-height: 1.5;
+          color: #374151;
+        }
+
+        #markdown-content blockquote {
+          border-left: 4px solid #e5e7eb;
+          padding-left: 16px;
+          margin: 16px 0;
+          color: #6b7280;
+          font-style: italic;
+        }
+
+        #markdown-content table {
+          border-collapse: collapse;
+          width: 100%;
+          margin: 16px 0;
+        }
+
+        #markdown-content th, #markdown-content td {
+          border: 1px solid #e5e7eb;
+          padding: 8px 12px;
+          text-align: left;
+        }
+
+        #markdown-content th {
+          background-color: #f9fafb;
+          font-weight: 600;
+        }
+
+        #markdown-content a {
+          color: #3b82f6;
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+
+        #markdown-content a:hover {
+          color: #1d4ed8;
+          text-decoration-thickness: 2px;
+        }
+
+        #markdown-content hr {
+          border: none;
+          border-top: 2px solid #e5e7eb;
+          margin: 24px 0;
+        }
+
+        #markdown-content del {
+          text-decoration: line-through;
+          color: #6b7280;
+        }
+
+        #markdown-content ul {
+          list-style-type: disc;
+        }
+
+        #markdown-content ol {
+          list-style-type: decimal;
+        }
+
+        #markdown-content tbody tr:nth-child(even) {
+          background-color: #f9fafb;
+        }
+
+        /* Dark mode styles for markdown content */
+        .dark #markdown-content h1 {
+          color: #f9fafb;
+          border-bottom-color: #4b5563;
+        }
+
+        .dark #markdown-content h2 {
+          color: #f3f4f6;
+          border-bottom-color: #4b5563;
+        }
+
+        .dark #markdown-content h3,
+        .dark #markdown-content h4,
+        .dark #markdown-content h5,
+        .dark #markdown-content h6 {
+          color: #f3f4f6;
+        }
+
+        .dark #markdown-content p,
+        .dark #markdown-content li {
+          color: #d1d5db;
+        }
+
+        .dark #markdown-content strong {
+          color: #f9fafb;
+        }
+
+        .dark #markdown-content em {
+          color: #9ca3af;
+        }
+
+        .dark #markdown-content code {
+          background-color: #374151;
+          border-color: #4b5563;
+          color: #fbbf24;
+        }
+
+        .dark #markdown-content pre {
+          background-color: #1f2937;
+          border-color: #374151;
+        }
+
+        .dark #markdown-content pre code {
+          color: #d1d5db;
+          background: none;
+        }
+
+        .dark #markdown-content blockquote {
+          border-left-color: #4b5563;
+          color: #9ca3af;
+        }
+
+        .dark #markdown-content th,
+        .dark #markdown-content td {
+          border-color: #4b5563;
+        }
+
+        .dark #markdown-content th {
+          background-color: #374151;
+        }
+
+        .dark #markdown-content a {
+          color: #60a5fa;
+        }
+
+        .dark #markdown-content a:hover {
+          color: #93c5fd;
+        }
+
+        .dark #markdown-content hr {
+          border-top-color: #4b5563;
+        }
+
+        .dark #markdown-content del {
+          color: #9ca3af;
+        }
+
+        .dark #markdown-content tbody tr:nth-child(even) {
+          background-color: #374151;
         }
 
         .ai-test-error {
@@ -370,10 +687,24 @@ ActiveAdmin.register_page "AI Test" do
       end
     end
 
-    # Response container
+    # Response container with tabs
     div "", id: "response-container", class: "ai-test-response" do
       h3 "AI Response:", class: "ai-test-response-title"
-      div "", id: "response-content", class: "ai-test-response-content"
+
+      # Tab navigation
+      div "", class: "ai-test-tabs" do
+        button "Markdown", id: "markdown-tab", class: "ai-test-tab ai-test-tab-active", type: "button"
+        button "Raw", id: "raw-tab", class: "ai-test-tab", type: "button"
+      end
+
+      # Tab content
+      div "", class: "ai-test-tab-content" do
+        div "", id: "markdown-content", class: "ai-test-response-content ai-test-tab-pane ai-test-tab-pane-active"
+        div "", id: "raw-content", class: "ai-test-response-content ai-test-tab-pane", style: "display: none;" do
+          pre "", id: "raw-text", class: "ai-test-raw-text"
+        end
+      end
+
       div "", id: "response-meta", class: "ai-test-response-meta"
     end
 
@@ -440,7 +771,8 @@ ActiveAdmin.register_page "AI Test" do
           // Setup searchable model dropdown
           setupSearchableDropdown();
 
-
+          // Setup tabs
+          setupTabs();
 
           // Handle prompt selection
           promptSelect.addEventListener('change', function() {
@@ -578,7 +910,18 @@ ActiveAdmin.register_page "AI Test" do
 
           function displayResponse(data) {
             console.log('Displaying response:', data);
-            document.getElementById('response-content').textContent = data.response;
+
+            // Populate markdown tab
+            var markdownContent = document.getElementById('markdown-content');
+            if (markdownContent && data.markdown_html) {
+              markdownContent.innerHTML = data.markdown_html;
+            }
+
+            // Populate raw tab
+            var rawText = document.getElementById('raw-text');
+            if (rawText && data.response) {
+              rawText.textContent = data.response;
+            }
 
             var metaHtml =
               '<div class="ai-test-meta-item">' +
@@ -614,6 +957,36 @@ ActiveAdmin.register_page "AI Test" do
             console.log('Displaying error:', message);
             document.getElementById('error-message').textContent = message;
             errorContainer.classList.remove('ai-test-hidden');
+          }
+
+          function setupTabs() {
+            console.log('Setting up tabs');
+            var markdownTab = document.getElementById('markdown-tab');
+            var rawTab = document.getElementById('raw-tab');
+            var markdownContent = document.getElementById('markdown-content');
+            var rawContent = document.getElementById('raw-content');
+
+            if (markdownTab && rawTab && markdownContent && rawContent) {
+              markdownTab.addEventListener('click', function() {
+                // Switch to markdown tab
+                markdownTab.classList.add('ai-test-tab-active');
+                rawTab.classList.remove('ai-test-tab-active');
+                markdownContent.classList.add('ai-test-tab-pane-active');
+                rawContent.classList.remove('ai-test-tab-pane-active');
+                markdownContent.style.display = 'block';
+                rawContent.style.display = 'none';
+              });
+
+              rawTab.addEventListener('click', function() {
+                // Switch to raw tab
+                rawTab.classList.add('ai-test-tab-active');
+                markdownTab.classList.remove('ai-test-tab-active');
+                rawContent.classList.add('ai-test-tab-pane-active');
+                markdownContent.classList.remove('ai-test-tab-pane-active');
+                rawContent.style.display = 'block';
+                markdownContent.style.display = 'none';
+              });
+            }
           }
 
           function setupSearchableDropdown() {
@@ -737,9 +1110,13 @@ ActiveAdmin.register_page "AI Test" do
         # Calculate processing time
         processing_time = ((Time.current - start_time) * 1000).round(2)
 
+        # Convert markdown to HTML
+        markdown_html = render_markdown(result[:response].content)
+
         # Return JSON response
         render json: {
           response: result[:response].content,
+          markdown_html: markdown_html,
           model: result[:ai_log].settings['model'],
           cost: sprintf('%.6f', result[:ai_log].total_cost || 0),
           processing_time: processing_time,
@@ -754,6 +1131,31 @@ ActiveAdmin.register_page "AI Test" do
         # Clean up session
         Current.ailog_session = nil
       end
+    end
+
+    private
+
+    def render_markdown(text)
+      return '' if text.blank?
+
+      # Use GitHub Markup for consistent markdown processing
+      require 'github/markup'
+
+      # Process markdown using GitHub's markup processor
+      html = GitHub::Markup.render('README.md', text)
+
+      # Post-process to add target="_blank" to external links
+      html.gsub(/<a href="(https?:\/\/[^"]+)"([^>]*)>/) do |match|
+        url = $1
+        attributes = $2
+        unless attributes.include?('target=')
+          attributes += ' target="_blank" rel="noopener noreferrer"'
+        end
+        "<a href=\"#{url}\"#{attributes}>"
+      end
+    rescue
+      # If markdown parsing fails, return the original text wrapped in <pre>
+      "<pre>#{ERB::Util.html_escape(text)}</pre>"
     end
   end
 end

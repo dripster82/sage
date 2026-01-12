@@ -48,4 +48,4 @@ RUN bundle exec rake assets:precompile
 # Expose port 3000
 EXPOSE 3000
 
-CMD ['tail', '-f', '/dev/null']
+CMD ['bundle', 'exec', 'rails', 'server', '-b', '0.0.0.0']
