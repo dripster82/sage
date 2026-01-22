@@ -670,7 +670,8 @@ ActiveAdmin.register_page "AI Test" do
             input "", type: "hidden", id: "model-select", name: "model_id"
             div "", id: "model-dropdown", class: "dropdown" do
               AllowedModel.active.order(:name).each do |model|
-                div "#{model.name} (#{model.provider}) - #{model.context_size} tokens", class: "dropdown-item", "data-value": model.model, "data-provider": model.provider, "data-context": model.context_size
+                pricing_str = model.pricing_display
+                div "#{model.name} (#{model.provider}) - #{model.context_size} tokens - #{pricing_str}", class: "dropdown-item", "data-value": model.model, "data-provider": model.provider, "data-context": model.context_size
               end
             end
           end
@@ -851,6 +852,7 @@ ActiveAdmin.register_page "AI Test" do
             submitBtn.disabled = true;
             loadingSpinner.classList.add('ai-test-show');
             responseContainer.classList.add('ai-test-hidden');
+            errorContainer.classList.remove('ai-test-show');
             errorContainer.classList.add('ai-test-hidden');
 
             // Make AJAX request
@@ -913,8 +915,12 @@ ActiveAdmin.register_page "AI Test" do
 
             // Populate markdown tab
             var markdownContent = document.getElementById('markdown-content');
-            if (markdownContent && data.markdown_html) {
-              markdownContent.innerHTML = data.markdown_html;
+            if (markdownContent) {
+              if (data.markdown_html) {
+                markdownContent.innerHTML = data.markdown_html;
+              } else if (data.response) {
+                markdownContent.textContent = data.response;
+              }
             }
 
             // Populate raw tab
@@ -951,12 +957,15 @@ ActiveAdmin.register_page "AI Test" do
 
             document.getElementById('response-meta').innerHTML = metaHtml;
             responseContainer.classList.remove('ai-test-hidden');
+            errorContainer.classList.remove('ai-test-show');
+            errorContainer.classList.add('ai-test-hidden');
           }
 
           function displayError(message) {
             console.log('Displaying error:', message);
             document.getElementById('error-message').textContent = message;
             errorContainer.classList.remove('ai-test-hidden');
+            errorContainer.classList.add('ai-test-show');
           }
 
           function setupTabs() {
@@ -1138,11 +1147,20 @@ ActiveAdmin.register_page "AI Test" do
     def render_markdown(text)
       return '' if text.blank?
 
-      # Use GitHub Markup for consistent markdown processing
-      require 'github/markup'
-
-      # Process markdown using GitHub's markup processor
-      html = GitHub::Markup.render('README.md', text)
+      html = begin
+        # Prefer CommonMarker when available for predictable markdown rendering.
+        require 'commonmarker'
+        CommonMarker.render_html(text, :DEFAULT, %i[table strikethrough autolink])
+      rescue LoadError
+        begin
+          # Fallback to GitHub Markup if CommonMarker isn't available.
+          require 'github/markup'
+          GitHub::Markup.render('README.md', text)
+        rescue LoadError
+          # Final fallback when no markdown gem is installed.
+          ActionController::Base.helpers.simple_format(ERB::Util.html_escape(text))
+        end
+      end
 
       # Post-process to add target="_blank" to external links
       html.gsub(/<a href="(https?:\/\/[^"]+)"([^>]*)>/) do |match|

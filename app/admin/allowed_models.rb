@@ -16,6 +16,9 @@ ActiveAdmin.register AllowedModel do
     column :context_size do |allowed_model|
       allowed_model.context_size_display
     end
+    column :pricing do |allowed_model|
+      allowed_model.pricing_display
+    end
     column :active do |allowed_model|
       if allowed_model.active?
         span 'Active', class: 'status_tag ok'
@@ -32,7 +35,11 @@ ActiveAdmin.register AllowedModel do
     end
     column :created_at
     column :updated_at
-    actions
+    actions do |allowed_model|
+      action_links = []
+      action_links << link_to('Make Default', make_default_admin_allowed_model_path(allowed_model), method: :patch, data: { confirm: 'Are you sure you want to make this the default model?' }, class: 'member_link') unless allowed_model.default?
+      safe_join(action_links, ' ')
+    end
   end
 
   filter :name
@@ -51,6 +58,9 @@ ActiveAdmin.register AllowedModel do
       row :provider
       row :context_size do |allowed_model|
         "#{allowed_model.context_size_display} (#{allowed_model.context_size})" if allowed_model.context_size
+      end
+      row :pricing do |allowed_model|
+        allowed_model.pricing_display
       end
       row :active do |allowed_model|
         if allowed_model.active?
@@ -143,7 +153,12 @@ ActiveAdmin.register AllowedModel do
 
         f.input :model, as: :select,
                 collection: AllowedModel.available_models_for_dropdown.map { |m|
-                  ["#{m[:name]} (#{m[:provider]}) - #{m[:context_size] ? "#{m[:context_size]} tokens" : "Unknown context"}", m[:id]]
+                  pricing_str = if m[:pricing_input] && m[:pricing_output]
+                    " - In: $#{format('%.2f', m[:pricing_input].to_f)} / Out: $#{format('%.2f', m[:pricing_output].to_f)}"
+                  else
+                    ""
+                  end
+                  ["#{m[:name]} (#{m[:provider]}) - #{m[:context_size] ? "#{m[:context_size]} tokens" : "Unknown context"}#{pricing_str}", m[:id]]
                 },
                 prompt: "Select a model...",
                 input_html: {
@@ -211,11 +226,19 @@ ActiveAdmin.register AllowedModel do
                     $('#model-preview').remove();
 
                     if (selectedModel && selectedModelId) {
+                      var pricingStr = '';
+                      if (selectedModel.pricing_input && selectedModel.pricing_output) {
+                        var inputPrice = parseFloat(selectedModel.pricing_input).toFixed(2);
+                        var outputPrice = parseFloat(selectedModel.pricing_output).toFixed(2);
+                        pricingStr = '<strong style="color: #b0b0b0;">Pricing:</strong> <span style="color: #e0e0e0;">In: $' + inputPrice + ' / Out: $' + outputPrice + '</span><br>';
+                      }
+
                       var preview = $('<div id="model-preview" style="margin-top: 10px; padding: 10px; background-color: #2a2a2a; color: #e0e0e0; border-radius: 4px; border-left: 4px solid #5897fb;">' +
                         '<strong style="color: #e0e0e0;">Selected Model Details:</strong><br>' +
                         '<strong style="color: #b0b0b0;">Name:</strong> <span style="color: #e0e0e0;">' + selectedModel.name + '</span><br>' +
                         '<strong style="color: #b0b0b0;">Provider:</strong> <span style="color: #e0e0e0;">' + selectedModel.provider + '</span><br>' +
                         '<strong style="color: #b0b0b0;">Context Size:</strong> <span style="color: #e0e0e0;">' + (selectedModel.context_size ? selectedModel.context_size.toLocaleString() + ' tokens' : 'Unknown') + '</span><br>' +
+                        pricingStr +
                         '<strong style="color: #b0b0b0;">Model ID:</strong> <span style="color: #5897fb;">' + selectedModel.id + '</span>' +
                         '</div>');
 
@@ -259,6 +282,8 @@ ActiveAdmin.register AllowedModel do
       @allowed_model.name = selected_model[:name]
       @allowed_model.provider = selected_model[:provider]
       @allowed_model.context_size = selected_model[:context_size]
+      @allowed_model.pricing_input = selected_model[:pricing_input]
+      @allowed_model.pricing_output = selected_model[:pricing_output]
 
       if @allowed_model.save
         redirect_to admin_allowed_model_path(@allowed_model), notice: 'Allowed model was successfully created.'

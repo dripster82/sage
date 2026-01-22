@@ -94,15 +94,22 @@ RSpec.describe AllowedModel, type: :model do
   describe 'class methods' do
     describe '.available_models_for_dropdown' do
       before do
+        mock_pricing = double('Pricing')
+        mock_text_tokens = double('TextTokens')
+
+        allow(mock_text_tokens).to receive(:input).and_return(0.001)
+        allow(mock_text_tokens).to receive(:output).and_return(0.002)
+        allow(mock_pricing).to receive(:text_tokens).and_return(mock_text_tokens)
+
         allow(RubyLLM).to receive(:models).and_return([
-          double(name: 'Test Model', id: 'test/model', provider: 'test', context_window: 4096)
+          double(name: 'Test Model', id: 'test/model', provider: 'test', context_window: 4096, pricing: mock_pricing)
         ])
       end
 
       it 'returns formatted model data from RubyLLM' do
         result = AllowedModel.available_models_for_dropdown
         expect(result).to eq([
-          { name: 'Test Model', id: 'test/model', provider: 'test', context_size: 4096 }
+          { name: 'Test Model', id: 'test/model', provider: 'test', context_size: 4096, pricing_input: 0.001, pricing_output: 0.002 }
         ])
       end
     end

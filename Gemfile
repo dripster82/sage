@@ -60,3 +60,4 @@ gem "activegraph", "= 12.0.0.beta4"
 gem "json-repair", "~> 0.2.0"
 
 gem "github-markup", "~> 5.0"
+gem "commonmarker", "~> 0.23"

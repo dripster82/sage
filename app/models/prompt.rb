@@ -115,6 +115,9 @@ class Prompt < ApplicationRecord
   def model_display_name
     return allowed_model.display_name if allowed_model
 
+    default_model = AllowedModel.get_default_model
+    return "Default (#{default_model.display_name})" if default_model
+
     "Default (#{RubyLLM.config.default_model})"
   end
 

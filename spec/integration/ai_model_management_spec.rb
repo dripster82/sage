@@ -8,11 +8,24 @@ RSpec.describe 'AI Model Management Integration', type: :integration do
   before do
     # Mock RubyLLM configuration
     allow(RubyLLM.config).to receive(:default_model).and_return('ruby-llm/default')
-    
+
+    # Mock pricing structure
+    mock_pricing_1 = double('Pricing1')
+    mock_text_tokens_1 = double('TextTokens1')
+    allow(mock_text_tokens_1).to receive(:input).and_return(0.001)
+    allow(mock_text_tokens_1).to receive(:output).and_return(0.002)
+    allow(mock_pricing_1).to receive(:text_tokens).and_return(mock_text_tokens_1)
+
+    mock_pricing_2 = double('Pricing2')
+    mock_text_tokens_2 = double('TextTokens2')
+    allow(mock_text_tokens_2).to receive(:input).and_return(0.002)
+    allow(mock_text_tokens_2).to receive(:output).and_return(0.004)
+    allow(mock_pricing_2).to receive(:text_tokens).and_return(mock_text_tokens_2)
+
     # Mock RubyLLM models for dropdown
     allow(RubyLLM).to receive(:models).and_return([
-      double(name: 'Test Model 1', id: 'test/model-1', provider: 'test', context_window: 4096),
-      double(name: 'Test Model 2', id: 'test/model-2', provider: 'test', context_window: 8192)
+      double(name: 'Test Model 1', id: 'test/model-1', provider: 'test', context_window: 4096, pricing: mock_pricing_1),
+      double(name: 'Test Model 2', id: 'test/model-2', provider: 'test', context_window: 8192, pricing: mock_pricing_2)
     ])
   end
 
@@ -88,10 +101,10 @@ RSpec.describe 'AI Model Management Integration', type: :integration do
 
     it 'provides correct model data for dropdowns' do
       available_models = AllowedModel.available_models_for_dropdown
-      
+
       expect(available_models).to contain_exactly(
-        { name: 'Test Model 1', id: 'test/model-1', provider: 'test', context_size: 4096 },
-        { name: 'Test Model 2', id: 'test/model-2', provider: 'test', context_size: 8192 }
+        { name: 'Test Model 1', id: 'test/model-1', provider: 'test', context_size: 4096, pricing_input: 0.001, pricing_output: 0.002 },
+        { name: 'Test Model 2', id: 'test/model-2', provider: 'test', context_size: 8192, pricing_input: 0.002, pricing_output: 0.004 }
       )
     end
 

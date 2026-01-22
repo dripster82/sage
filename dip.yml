@@ -34,7 +34,7 @@ interaction:
       run_options: [service-ports, use-aliases]
 
   web_console:
-    description: Run Rails server
+    description: Run Rails Console
     service: web
     command: rails c
 

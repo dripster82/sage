@@ -25,7 +25,9 @@ class AllowedModel < ApplicationRecord
         name: model.name,
         id: model.id,
         provider: model.provider,
-        context_size: model.context_window
+        context_size: model.context_window,
+        pricing_input: model.pricing&.text_tokens&.input,
+        pricing_output: model.pricing&.text_tokens&.output
       }
     end
   end
@@ -55,7 +57,7 @@ class AllowedModel < ApplicationRecord
 
   def context_size_display
     return 'Unknown' if context_size.nil?
-    
+
     if context_size >= 1_000_000
       "#{(context_size / 1_000_000.0).round(1)}M"
     elsif context_size >= 1_000
@@ -63,6 +65,14 @@ class AllowedModel < ApplicationRecord
     else
       context_size.to_s
     end
+  end
+
+  def pricing_display
+    return 'Unknown' unless pricing_input && pricing_output
+
+    input_formatted = pricing_input.to_f 
+    output_formatted = pricing_output.to_f
+    "In: $#{input_formatted} / Out: $#{output_formatted}"
   end
 
   def is_default?

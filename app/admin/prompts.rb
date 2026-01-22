@@ -90,7 +90,7 @@ ActiveAdmin.register Prompt do
       if prompt.allowed_model
         prompt.allowed_model.display_name
       else
-        span "Default (#{RubyLLM.config.default_model})", class: "text-gray-500"
+        span prompt.model_display_name, class: "text-gray-500"
       end
     end
     column :tags do |prompt|
@@ -139,7 +139,7 @@ ActiveAdmin.register Prompt do
         if prompt.allowed_model
           link_to prompt.allowed_model.display_name, admin_allowed_model_path(prompt.allowed_model)
         else
-          span "Default (#{RubyLLM.config.default_model})", class: "text-gray-500"
+          span prompt.model_display_name, class: "text-gray-500"
         end
       end
       row :content do |prompt|
@@ -318,8 +318,12 @@ ActiveAdmin.register Prompt do
       f.input :category
       f.input :status, as: :select, collection: %w[active inactive draft]
       f.input :allowed_model, as: :select,
-              collection: AllowedModel.active.order(:name).map { |m| [m.display_name, m.id] },
-              prompt: "Use default model",
+              collection: AllowedModel.active.order(:name).map { |m|
+                context_str = m.context_size ? "#{m.context_size} tokens" : "Unknown context"
+                pricing_str = m.pricing_display
+                ["#{m.display_name} - #{context_str} - #{pricing_str}", m.id]
+              },
+              include_blank: "Use default model",
               hint: "Select a specific model for this prompt, or leave blank to use the default model"
       f.input :content, as: :text, input_html: { rows: 25 }
     end

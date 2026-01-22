@@ -58,7 +58,12 @@ ActiveAdmin.register AiLog do
         status_tag "Pending", class: "warning"
       end
     end
-    column :created_at
+    column :created_at do |ai_log|
+      div do
+        div ai_log.created_at.strftime("%B %d, %Y %H:%M")
+        div "(#{ai_log.duration_display})", style: "color: #999; font-size: 0.9em; margin-top: 2px;"
+      end
+    end
     actions
   end
 

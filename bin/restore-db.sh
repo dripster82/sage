@@ -18,6 +18,11 @@ fi
 BACKUP_FILE="$1"
 DB_NAME="${2:-app_development}"
 
+if [[ ! "$DB_NAME" =~ ^[A-Za-z0-9_]+$ ]]; then
+  echo "❌ Error: Invalid database name: $DB_NAME"
+  exit 1
+fi
+
 if [ ! -f "$BACKUP_FILE" ]; then
   echo "❌ Error: Backup file not found: $BACKUP_FILE"
   exit 1
@@ -36,19 +41,27 @@ if [[ ! $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
 fi
 
 # Check if database container is running
-if ! docker ps | grep -q sage-db; then
-  echo "❌ Error: sage-db container is not running"
+if ! dip compose ps -q db >/dev/null 2>&1; then
+  echo "❌ Error: db service is not running"
   exit 1
 fi
 
 echo "🔄 Dropping existing database..."
-docker exec sage-db-1 psql -U postgres -c "DROP DATABASE IF EXISTS $DB_NAME;" || true
+dip compose exec -T db psql -U postgres -d postgres <<SQL
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = '$DB_NAME'
+  AND pid <> pg_backend_pid();
+DROP DATABASE IF EXISTS "$DB_NAME";
+SQL
 
 echo "🔄 Creating new database..."
-docker exec sage-db-1 psql -U postgres -c "CREATE DATABASE $DB_NAME;"
+dip compose exec -T db psql -U postgres -d postgres <<SQL
+CREATE DATABASE "$DB_NAME";
+SQL
 
 echo "🔄 Restoring from backup..."
-docker exec -i sage-db-1 psql -U postgres "$DB_NAME" < "$BACKUP_FILE"
+dip compose exec -T db psql -U postgres "$DB_NAME" < "$BACKUP_FILE"
 
 if [ $? -eq 0 ]; then
   echo "✅ Restore completed successfully!"
@@ -57,4 +70,3 @@ else
   echo "❌ Restore failed!"
   exit 1
 fi
-

@@ -101,4 +101,34 @@ class AiLog < ApplicationRecord
   def pending?
     response.blank?
   end
+
+  def duration_display
+    return "Pending" if pending?
+
+    duration_ms = ((updated_at - created_at) * 1000).to_i
+
+    case duration_ms
+    when 0..999
+      "#{duration_ms} ms"
+    when 1000..59999
+      seconds = duration_ms / 1000
+      "#{seconds} second#{seconds > 1 ? 's' : ''}"
+    when 60000..3599999
+      minutes = duration_ms / 60000
+      seconds = (duration_ms % 60000) / 1000
+      if seconds > 0
+        "#{minutes} minute#{minutes > 1 ? 's' : ''} #{seconds}s"
+      else
+        "#{minutes} minute#{minutes > 1 ? 's' : ''}"
+      end
+    else
+      hours = duration_ms / 3600000
+      minutes = (duration_ms % 3600000) / 60000
+      if minutes > 0
+        "#{hours}h #{minutes}m"
+      else
+        "#{hours} hour#{hours > 1 ? 's' : ''}"
+      end
+    end
+  end
 end

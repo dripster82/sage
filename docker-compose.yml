@@ -26,6 +26,8 @@ services:
     command: tail -f /dev/null
     volumes:
       - .:/app
+      - bundle:/usr/local/bundle
+      - ~/.bundle:/app/.bundle
     ports:
       - "3030:3000"
     depends_on:
@@ -35,6 +37,7 @@ services:
       - .env
 
 volumes:
+  bundle:
   pgdata:
     name: sage_pgdata
     external: true
