@@ -1,20 +1,18 @@
 # frozen_string_literal: true
 
-# app/controllers/api/v1/admin_users/tokens_controller.rb
 module Api
   module V1
-    module AdminUsers
+    module Users
       class TokensController < Api::V1::BaseController
         include Authenticable
 
-        before_action :authenticate_admin_user!, except: [:refresh]
         # Skip authentication for refresh action since it handles its own token validation
-        skip_before_action :authenticate_admin_user!, only: [:refresh]
+        skip_before_action :authenticate_user!, only: [:refresh]
 
-        # Handle token service specific errors - these need to be more specific than StandardError
-        rescue_from ::AdminUsers::TokenService::DeviceMismatchError, with: :handle_device_mismatch_error
-        rescue_from ::AdminUsers::TokenService::TokenReuseError, with: :handle_token_reuse_error
-        rescue_from ::AdminUsers::TokenService::InvalidTokenFamilyError, with: :handle_invalid_token_family_error
+        # Handle token service specific errors
+        rescue_from ::Users::TokenService::DeviceMismatchError, with: :handle_device_mismatch_error
+        rescue_from ::Users::TokenService::TokenReuseError, with: :handle_token_reuse_error
+        rescue_from ::Users::TokenService::InvalidTokenFamilyError, with: :handle_invalid_token_family_error
 
         def refresh
           refresh_token = params[:refresh_token]
@@ -31,11 +29,12 @@ module Api
 
             if decoded_refresh_token['family_id'].nil?
               # Handle legacy refresh token
-              admin_user = AdminUser.find(decoded_refresh_token['admin_user_id'])
-              validate_access_token_for_legacy_mode(admin_user)
+              user = User.find(decoded_refresh_token['user_id'])
+              validate_access_token_for_legacy_mode(user)
 
               # For legacy mode, just return a new access token without rotating refresh token
-              new_access_token = token_service.encode_user_token(admin_user.id)
+              new_access_token = token_service.encode_user_token(user.id)
+              user.update_last_seen!
               render json: { auth_token: new_access_token }, status: :ok
             else
               # Handle device-bound refresh token
@@ -48,20 +47,10 @@ module Api
             Rails.logger.error "JWT Error: #{e.message}"
             render json: { error: "Invalid refresh token" }, status: :unauthorized
           rescue ActiveRecord::RecordNotFound => e
-            Rails.logger.error "Admin User Not Found: #{e.message}"
+            Rails.logger.error "User Not Found: #{e.message}"
             render json: { error: "Invalid refresh token" }, status: :unauthorized
-          rescue ::AdminUsers::TokenService::DeviceMismatchError => e
-            Rails.logger.error "Device Mismatch Error: #{e.message}"
-            render json: { error: "Device mismatch detected" }, status: :unauthorized
-          rescue ::AdminUsers::TokenService::TokenReuseError => e
-            Rails.logger.error "Token Reuse Error: #{e.message}"
-            render json: { error: "Token reuse detected" }, status: :unauthorized
-          rescue ::AdminUsers::TokenService::InvalidTokenFamilyError => e
-            Rails.logger.error "Invalid Token Family Error: #{e.message}"
-            render json: { error: "Invalid token family" }, status: :unauthorized
           rescue StandardError => e
             Rails.logger.error "Token refresh error: #{e.message}"
-            Rails.logger.error "Backtrace: #{e.backtrace.join('\n')}"
             if e.message == "Access token not provided"
               render json: { error: "Token not provided" }, status: :unauthorized
             else
@@ -72,16 +61,14 @@ module Api
 
         private
 
-        def validate_access_token_for_legacy_mode(admin_user)
-          # For legacy mode, we need to validate that the access token matches the refresh token
+        def validate_access_token_for_legacy_mode(user)
           token = request.headers["Authorization"]
           if token.present?
             begin
-              # remove Bearer from token string
               token = token.gsub('Bearer ', '')
               decoded_token = token_service.decode_token(token)
-              unless decoded_token["admin_user_id"] == admin_user.id
-                raise StandardError, "Admin User Token didn't match Refresh Token"
+              unless decoded_token["user_id"] == user.id
+                raise StandardError, "User Token didn't match Refresh Token"
               end
             rescue JWT::DecodeError, JWT::ExpiredSignature, JWT::InvalidIssuerError, JWT::InvalidIatError => e
               Rails.logger.error("JWT validation error: #{e.message}")
@@ -110,12 +97,11 @@ module Api
           render json: { error: "Invalid token family" }, status: :unauthorized
         end
 
-
-
         def token_service
-          ::AdminUsers::TokenService
+          ::Users::TokenService
         end
       end
     end
   end
 end
+

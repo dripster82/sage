@@ -57,7 +57,8 @@ RSpec.describe TokenFamily, type: :model do
   end
 
   describe 'associations' do
-    it { should belong_to(:admin_user) }
+    it { should belong_to(:admin_user).optional }
+    it { should belong_to(:user).optional }
   end
 
   describe 'indexes' do

@@ -6,13 +6,30 @@ module Api
       # Include JWT authentication
       include Authenticable
 
+      before_action :authenticate_user!
+
       # Handle specific errors from the PromptProcessingService
       # Order matters: more specific errors should come before general ones
       rescue_from PromptProcessingService::PromptNotFoundError, with: :handle_prompt_not_found
-      
+      rescue_from PromptProcessingService::MissingParameterError, with: :handle_missing_parameter
+
       def process_prompt
         validate_required_params
-        
+
+        # Get the prompt to check credits
+        prompt = Prompt.find_by!(name: params[:prompt])
+
+        # Check if user has sufficient credits
+        unless @current_user.has_sufficient_credits?(prompt.credits)
+          return render_error(
+            "Insufficient credits. Required: #{prompt.credits}, Available: #{@current_user.credits}",
+            status: :payment_required
+          )
+        end
+
+        # Deduct credits before processing
+        @current_user.deduct_credits!(prompt.credits)
+
         service = create_processing_service
         result = service.process_and_query(
           prompt_key: params[:prompt],
@@ -20,13 +37,15 @@ module Api
           parameters: extract_additional_parameters,
           chat_id: params[:chat_id]
         )
-        
+
         render_success({
           response: result[:response].content,
           prompt_name: result[:prompt].name,
           original_query: result[:original_query],
           ai_log_id: result[:ai_log].id,
-          processed_prompt: result[:processed_prompt]
+          processed_prompt: result[:processed_prompt],
+          cost: prompt.credits,
+          credits_remaining: @current_user.credits
         })
       end
 
@@ -39,7 +58,7 @@ module Api
       def create_processing_service
         temperature = params[:temperature]&.to_f || 0.7
         model = params[:model]
-        
+
         PromptProcessingService.new(temperature: temperature, model: model)
       end
 

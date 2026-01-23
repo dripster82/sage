@@ -3,7 +3,7 @@
 ActiveAdmin.register Prompt do
   menu parent: "Ai Admin"
 
-  permit_params :name, :content, :description, :category, :status, :metadata, :allowed_model_id
+  permit_params :name, :content, :description, :category, :status, :metadata, :allowed_model_id, :credits
 
   config.batch_actions = false
 
@@ -86,6 +86,7 @@ ActiveAdmin.register Prompt do
       status_tag prompt.status
     end
     column :current_version
+    column :credits
     column :model do |prompt|
       if prompt.allowed_model
         prompt.allowed_model.display_name
@@ -135,6 +136,7 @@ ActiveAdmin.register Prompt do
         status_tag prompt.status
       end
       row :current_version
+      row :credits
       row :model do |prompt|
         if prompt.allowed_model
           link_to prompt.allowed_model.display_name, admin_allowed_model_path(prompt.allowed_model)
@@ -317,6 +319,7 @@ ActiveAdmin.register Prompt do
       f.input :description, as: :text, input_html: { rows: 2 }
       f.input :category
       f.input :status, as: :select, collection: %w[active inactive draft]
+      f.input :credits, as: :number, input_html: { min: 1, value: f.object.credits || 1 }
       f.input :allowed_model, as: :select,
               collection: AllowedModel.active.order(:name).map { |m|
                 context_str = m.context_size ? "#{m.context_size} tokens" : "Unknown context"

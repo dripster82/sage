@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_12_115059) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_23_093815) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -107,6 +107,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_12_115059) do
     t.datetime "updated_at", null: false
     t.text "tags"
     t.bigint "allowed_model_id"
+    t.integer "credits", default: 1, null: false
     t.index ["allowed_model_id"], name: "index_prompts_on_allowed_model_id"
     t.index ["category"], name: "index_prompts_on_category"
     t.index ["created_by_id"], name: "index_prompts_on_created_by_id"
@@ -124,9 +125,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_12_115059) do
     t.string "device_fingerprint", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id"
     t.index ["admin_user_id", "device_fingerprint"], name: "index_token_families_on_admin_user_id_and_device_fingerprint"
     t.index ["admin_user_id"], name: "index_token_families_on_admin_user_id"
     t.index ["family_id"], name: "index_token_families_on_family_id", unique: true
+    t.index ["user_id"], name: "index_token_families_on_user_id"
+  end
+
+  create_table "users", force: :cascade do |t|
+    t.string "email", null: false
+    t.string "encrypted_password", null: false
+    t.datetime "last_seen"
+    t.integer "credits", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_users_on_email", unique: true
   end
 
   add_foreign_key "prompt_versions", "admin_users", column: "created_by_id"
@@ -135,4 +148,5 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_12_115059) do
   add_foreign_key "prompts", "admin_users", column: "updated_by_id"
   add_foreign_key "prompts", "allowed_models"
   add_foreign_key "token_families", "admin_users"
+  add_foreign_key "token_families", "users"
 end

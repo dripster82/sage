@@ -2,6 +2,7 @@
 
 Rails.application.routes.draw do
   devise_for :admin_users, ActiveAdmin::Devise.config
+  devise_for :users
   ActiveAdmin.routes(self)
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
@@ -13,12 +14,21 @@ Rails.application.routes.draw do
   # API routes
   namespace :api do
     namespace :v1 do
-      # Authentication routes
+      # Admin user authentication routes
       namespace :admin_users do
         post 'login', to: 'sessions#create'
         post 'refresh', to: 'tokens#refresh'
         post 'logout', to: 'logout#logout'
         post 'logout_all', to: 'logout#logout_all'
+      end
+
+      # User authentication routes
+      namespace :users do
+        post 'login', to: 'sessions#create'
+        post 'refresh', to: 'tokens#refresh'
+        post 'logout', to: 'logout#logout'
+        post 'logout_all', to: 'logout#logout_all'
+        get 'credits', to: 'credits#show'
       end
 
       resources :prompts, only: [] do

@@ -3,6 +3,7 @@
 class PromptProcessingService
   # Custom error classes
   class PromptNotFoundError < StandardError; end
+  class MissingParameterError < StandardError; end
 
   attr_reader :temperature, :model
 
@@ -12,6 +13,7 @@ class PromptProcessingService
   end
 
   def process_and_query(prompt_key: nil, query: nil, parameters: {}, chat_id: nil)
+
     validate_parameters({ prompt_key: prompt_key, query: query })
 
     prompt = find_prompt(prompt_key)

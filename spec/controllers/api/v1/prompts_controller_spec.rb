@@ -6,9 +6,9 @@ RSpec.describe Api::V1::PromptsController, type: :controller do
   let(:mock_service) { double('PromptProcessingService') }
   let(:mock_response) { double('Response', content: 'LLM response content') }
   let(:mock_ai_log) { double('AiLog', id: 1) }
-  let(:mock_prompt) { double('Prompt', name: 'test_prompt') }
-  let(:admin_user) { create(:admin_user) }
-  let(:valid_token) { AdminUsers::TokenService.encode_user_token(admin_user.id) }
+  let(:mock_prompt) { double('Prompt', name: 'test_prompt', credits: 1) }
+  let(:user) { create(:user, credits: 100) }
+  let(:valid_token) { Users::TokenService.encode_user_token(user.id) }
 
   let(:service_result) do
     {
@@ -23,6 +23,7 @@ RSpec.describe Api::V1::PromptsController, type: :controller do
   before do
     allow(PromptProcessingService).to receive(:new).and_return(mock_service)
     allow(mock_service).to receive(:process_and_query).and_return(service_result)
+    allow(Prompt).to receive(:find_by!).and_return(mock_prompt)
   end
 
   describe 'authentication' do

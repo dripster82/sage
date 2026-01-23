@@ -14,6 +14,7 @@ class Prompt < ApplicationRecord
   validates :content, presence: true
   validates :status, presence: true, inclusion: { in: %w[active inactive draft] }
   validates :current_version, presence: true, numericality: { greater_than: 0 }
+  validates :credits, presence: true, numericality: { greater_than: 0 }
 
   # Scopes
   scope :active, -> { where(status: 'active') }
