@@ -13,21 +13,32 @@ module Llm
       @chat ||= RubyLLM.chat(model: @model).with_temperature(@temperature)
     end
 
-    def ask(query, chat_id: nil)
+    def ask(query, chat_id: nil, prompt_key: nil)
+      # Track start time for duration calculation
+      start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
       # Create the AI log entry first
-      @ai_log = create_log_entry(query, chat_id)
+      @ai_log = create_log_entry(query, chat_id, prompt_key)
 
       begin
         # Make the LLM request
         response = chat.ask(query)
 
+        # Calculate duration in milliseconds
+        end_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        duration_ms = ((end_time - start_time) * 1000).to_i
+
         # Update the log with response data
-        update_log_with_response(response)
+        update_log_with_response(response, duration_ms)
 
         response
       rescue => e
+        # Calculate duration even for errors
+        end_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        duration_ms = ((end_time - start_time) * 1000).to_i
+
         # Update log with error information
-        update_log_with_error(e)
+        update_log_with_error(e, duration_ms)
         raise e
       end
     end
@@ -50,11 +61,12 @@ module Llm
       str_array[first_idx..last_idx].join("\n") 
     end
 
-    def create_log_entry(query, chat_id)
+    def create_log_entry(query, chat_id, prompt_key = nil)
       AiLog.create!(
         model: @model,
         query: query,
         chat_id: chat_id,
+        prompt_key: prompt_key,
         session_uuid: Current.ailog_session,
         settings: {
           temperature: @temperature,
@@ -63,7 +75,7 @@ module Llm
       )
     end
 
-    def update_log_with_response(response)
+    def update_log_with_response(response, duration_ms)
       per_token_in = chat.model.pricing.text_tokens.standard.input_per_million.to_f / 1000000
       per_token_out = chat.model.pricing.text_tokens.standard.output_per_million.to_f / 1000000
       price_in = (response.input_tokens * per_token_in)
@@ -73,6 +85,7 @@ module Llm
         input_tokens: response.input_tokens,
         output_tokens: response.output_tokens,
         total_cost: price_in + price_out,
+        duration_ms: duration_ms,
         settings: @ai_log.settings.merge({
           temperature: @temperature,
           model:  chat.model.id,
@@ -84,9 +97,10 @@ module Llm
       )
     end
 
-    def update_log_with_error(error)
+    def update_log_with_error(error, duration_ms)
       @ai_log.update!(
         response: "ERROR: #{error.message}",
+        duration_ms: duration_ms,
         settings: @ai_log.settings.merge({
           temperature: @temperature,
           model: @model,

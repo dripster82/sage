@@ -133,7 +133,7 @@ module KnowledgeGraph
         h[:summary] = @document.summary
       end
       prompt1_query = @prompt1.content % replacement_hash
-      response =  Llm::QueryService.new(temperature:0.4).ask(prompt1_query).content
+      response =  Llm::QueryService.new(temperature:0.4).ask(prompt1_query, prompt_key: @prompt1.name).content
 
 
       replacement_hash = @prompt2.tags_hash.tap do |h|

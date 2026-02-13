@@ -32,7 +32,7 @@ module Documents
         h[:text] = @document.text
       end
       prompt_query = prompt.content % replacement_hash
-      @document.summary = Llm::QueryService.new.ask(prompt_query).content
+      @document.summary = Llm::QueryService.new.ask(prompt_query, prompt_key: prompt.name).content
       @document.vector = Llm::EmbeddingService.new.embed_text(@document.summary).vectors
       
       debug_log "---"

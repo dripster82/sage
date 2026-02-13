@@ -1,0 +1,940 @@
+diff --git a/app/admin/prompts.rb b/app/admin/prompts.rb
+index 61102b0..e00030a 100644
+--- a/app/admin/prompts.rb
++++ b/app/admin/prompts.rb
+@@ -3,7 +3,7 @@
+ ActiveAdmin.register Prompt do
+   menu parent: "Ai Admin"
+ 
+-  permit_params :name, :content, :description, :category, :status, :metadata, :allowed_model_id
++  permit_params :name, :content, :description, :category, :status, :metadata, :allowed_model_id, :credits
+ 
+   config.batch_actions = false
+ 
+@@ -86,6 +86,7 @@ ActiveAdmin.register Prompt do
+       status_tag prompt.status
+     end
+     column :current_version
++    column :credits
+     column :model do |prompt|
+       if prompt.allowed_model
+         prompt.allowed_model.display_name
+@@ -135,6 +136,7 @@ ActiveAdmin.register Prompt do
+         status_tag prompt.status
+       end
+       row :current_version
++      row :credits
+       row :model do |prompt|
+         if prompt.allowed_model
+           link_to prompt.allowed_model.display_name, admin_allowed_model_path(prompt.allowed_model)
+@@ -317,6 +319,7 @@ ActiveAdmin.register Prompt do
+       f.input :description, as: :text, input_html: { rows: 2 }
+       f.input :category
+       f.input :status, as: :select, collection: %w[active inactive draft]
++      f.input :credits, as: :number, input_html: { min: 1, value: f.object.credits || 1 }
+       f.input :allowed_model, as: :select,
+               collection: AllowedModel.active.order(:name).map { |m|
+                 context_str = m.context_size ? "#{m.context_size} tokens" : "Unknown context"
+diff --git a/app/admin/users.rb b/app/admin/users.rb
+new file mode 100644
+index 0000000..d794938
+--- /dev/null
++++ b/app/admin/users.rb
+@@ -0,0 +1,62 @@
++# frozen_string_literal: true
++
++ActiveAdmin.register User do
++  permit_params :email, :password, :password_confirmation, :credits
++
++  index do
++    selectable_column
++    id_column
++    column :email
++    column :credits
++    column :created_at
++    column :last_seen
++    actions
++  end
++
++  filter :email
++  filter :credits
++  filter :created_at
++  filter :last_seen
++
++  form do |f|
++    f.inputs do
++      f.input :email
++      f.input :password
++      f.input :password_confirmation
++      f.input :credits, input_html: { min: 0 }
++    end
++    f.actions
++  end
++
++  show do
++    attributes_table do
++      row :id
++      row :email
++      row :credits
++      row :created_at
++      row :updated_at
++      row :last_seen
++    end
++  end
++
++  controller do
++    def create
++      @user = User.new(permitted_params[:user])
++      if @user.save
++        redirect_to admin_user_path(@user), notice: 'User was successfully created.'
++      else
++        render :new
++      end
++    end
++
++    def update
++      @user = User.find(params[:id])
++      if @user.update(permitted_params[:user])
++        redirect_to admin_user_path(@user), notice: 'User was successfully updated.'
++      else
++        render :edit
++      end
++    end
++  end
++end
++
+diff --git a/app/controllers/api/v1/admin_users/tokens_controller.rb b/app/controllers/api/v1/admin_users/tokens_controller.rb
+index edc01b6..3ce65d4 100644
+--- a/app/controllers/api/v1/admin_users/tokens_controller.rb
++++ b/app/controllers/api/v1/admin_users/tokens_controller.rb
+@@ -7,6 +7,7 @@ module Api
+       class TokensController < Api::V1::BaseController
+         include Authenticable
+ 
++        before_action :authenticate_admin_user!, except: [:refresh]
+         # Skip authentication for refresh action since it handles its own token validation
+         skip_before_action :authenticate_admin_user!, only: [:refresh]
+ 
+diff --git a/app/controllers/api/v1/prompts_controller.rb b/app/controllers/api/v1/prompts_controller.rb
+index 3eb6fa8..31d23e4 100644
+--- a/app/controllers/api/v1/prompts_controller.rb
++++ b/app/controllers/api/v1/prompts_controller.rb
+@@ -6,13 +6,30 @@ module Api
+       # Include JWT authentication
+       include Authenticable
+ 
++      before_action :authenticate_user!
++
+       # Handle specific errors from the PromptProcessingService
+       # Order matters: more specific errors should come before general ones
+       rescue_from PromptProcessingService::PromptNotFoundError, with: :handle_prompt_not_found
+-      
++      rescue_from PromptProcessingService::MissingParameterError, with: :handle_missing_parameter
++
+       def process_prompt
+         validate_required_params
+-        
++
++        # Get the prompt to check credits
++        prompt = Prompt.find_by!(name: params[:prompt])
++
++        # Check if user has sufficient credits
++        unless @current_user.has_sufficient_credits?(prompt.credits)
++          return render_error(
++            "Insufficient credits. Required: #{prompt.credits}, Available: #{@current_user.credits}",
++            status: :payment_required
++          )
++        end
++
++        # Deduct credits before processing
++        @current_user.deduct_credits!(prompt.credits)
++
+         service = create_processing_service
+         result = service.process_and_query(
+           prompt_key: params[:prompt],
+@@ -20,13 +37,15 @@ module Api
+           parameters: extract_additional_parameters,
+           chat_id: params[:chat_id]
+         )
+-        
++
+         render_success({
+           response: result[:response].content,
+           prompt_name: result[:prompt].name,
+           original_query: result[:original_query],
+           ai_log_id: result[:ai_log].id,
+-          processed_prompt: result[:processed_prompt]
++          processed_prompt: result[:processed_prompt],
++          cost: prompt.credits,
++          credits_remaining: @current_user.credits
+         })
+       end
+ 
+@@ -39,7 +58,7 @@ module Api
+       def create_processing_service
+         temperature = params[:temperature]&.to_f || 0.7
+         model = params[:model]
+-        
++
+         PromptProcessingService.new(temperature: temperature, model: model)
+       end
+ 
+diff --git a/app/controllers/api/v1/users/credits_controller.rb b/app/controllers/api/v1/users/credits_controller.rb
+new file mode 100644
+index 0000000..5e4704d
+--- /dev/null
++++ b/app/controllers/api/v1/users/credits_controller.rb
+@@ -0,0 +1,22 @@
++# frozen_string_literal: true
++
++module Api
++  module V1
++    module Users
++      class CreditsController < Api::V1::BaseController
++        include Authenticable
++
++        before_action :authenticate_user!
++
++        def show
++          render_success({
++            credits: @current_user.credits,
++            email: @current_user.email,
++            last_seen: @current_user.last_seen
++          })
++        end
++      end
++    end
++  end
++end
++
+diff --git a/app/controllers/api/v1/users/logout_controller.rb b/app/controllers/api/v1/users/logout_controller.rb
+new file mode 100644
+index 0000000..955df33
+--- /dev/null
++++ b/app/controllers/api/v1/users/logout_controller.rb
+@@ -0,0 +1,45 @@
++# frozen_string_literal: true
++
++module Api
++  module V1
++    module Users
++      class LogoutController < ApplicationController
++        include Authenticable
++
++        before_action :authenticate_user!
++
++        def logout
++          refresh_token = params[:refresh_token]
++
++          if refresh_token.blank?
++            render json: { error: "Refresh token is required" }, status: :bad_request
++            return
++          end
++
++          result = token_service.logout_session(refresh_token)
++
++          if result[:success]
++            render json: { message: result[:message] }, status: :ok
++          else
++            render json: { error: result[:message] }, status: :bad_request
++          end
++        end
++
++        def logout_all
++          result = token_service.logout_all_sessions(@current_user.id)
++          render json: { 
++            message: "Successfully logged out from all devices",
++            sessions_terminated: result[:sessions_terminated]
++          }, status: :ok
++        end
++
++        private
++
++        def token_service
++          ::Users::TokenService
++        end
++      end
++    end
++  end
++end
++
+diff --git a/app/controllers/api/v1/users/sessions_controller.rb b/app/controllers/api/v1/users/sessions_controller.rb
+new file mode 100644
+index 0000000..d7ea00c
+--- /dev/null
++++ b/app/controllers/api/v1/users/sessions_controller.rb
+@@ -0,0 +1,44 @@
++# frozen_string_literal: true
++
++module Api
++  module V1
++    module Users
++      class SessionsController < Api::V1::BaseController
++        def create
++          begin
++            user = User.find_for_database_authentication(email: params[:email])
++
++            if user&.valid_password?(params[:password])
++              # Check for legacy client support
++              if request.headers['X-Legacy-Client'] == 'true'
++                # Legacy token generation for backward compatibility
++                token = token_service.encode_user_token(user.id)
++                refresh_token = token_service.encode_refresh_token(user.id)
++                render json: { auth_token: token, refresh_token: refresh_token }, status: :ok
++              else
++                # Generate device fingerprint from server-side request data
++                device_fingerprint = DeviceFingerprintService.generate_from_request(request)
++
++                # New device-bound token generation
++                tokens = token_service.issue_token_with_rotation(user, device_fingerprint)
++                render json: { auth_token: tokens[:access_token], refresh_token: tokens[:refresh_token] }, status: :ok
++              end
++            else
++              render json: { error: "Invalid email or password" }, status: :unauthorized
++            end
++          rescue => e
++            Rails.logger.error("Error during user sign-in: #{e.message}")
++            render json: { error: "Something went wrong" }, status: :internal_server_error
++          end
++        end
++
++        private
++
++        def token_service
++          ::Users::TokenService
++        end
++      end
++    end
++  end
++end
++
+diff --git a/app/controllers/api/v1/users/tokens_controller.rb b/app/controllers/api/v1/users/tokens_controller.rb
+new file mode 100644
+index 0000000..a269f28
+--- /dev/null
++++ b/app/controllers/api/v1/users/tokens_controller.rb
+@@ -0,0 +1,107 @@
++# frozen_string_literal: true
++
++module Api
++  module V1
++    module Users
++      class TokensController < Api::V1::BaseController
++        include Authenticable
++
++        # Skip authentication for refresh action since it handles its own token validation
++        skip_before_action :authenticate_user!, only: [:refresh]
++
++        # Handle token service specific errors
++        rescue_from ::Users::TokenService::DeviceMismatchError, with: :handle_device_mismatch_error
++        rescue_from ::Users::TokenService::TokenReuseError, with: :handle_token_reuse_error
++        rescue_from ::Users::TokenService::InvalidTokenFamilyError, with: :handle_invalid_token_family_error
++
++        def refresh
++          refresh_token = params[:refresh_token]
++
++          # Validate refresh token is present
++          if refresh_token.blank?
++            render json: { error: "Refresh token is required" }, status: :bad_request
++            return
++          end
++
++          begin
++            # Check if this is a legacy refresh token (no family_id)
++            decoded_refresh_token = token_service.decode_token(refresh_token)
++
++            if decoded_refresh_token['family_id'].nil?
++              # Handle legacy refresh token
++              user = User.find(decoded_refresh_token['user_id'])
++              validate_access_token_for_legacy_mode(user)
++
++              # For legacy mode, just return a new access token without rotating refresh token
++              new_access_token = token_service.encode_user_token(user.id)
++              user.update_last_seen!
++              render json: { auth_token: new_access_token }, status: :ok
++            else
++              # Handle device-bound refresh token
++              device_fingerprint = DeviceFingerprintService.generate_from_request(request)
++              tokens = token_service.rotate_refresh_token(refresh_token, device_fingerprint)
++              render json: { auth_token: tokens[:access_token], refresh_token: tokens[:refresh_token] }, status: :ok
++            end
++
++          rescue JWT::DecodeError, JWT::ExpiredSignature, JWT::InvalidIssuerError, JWT::InvalidIatError => e
++            Rails.logger.error "JWT Error: #{e.message}"
++            render json: { error: "Invalid refresh token" }, status: :unauthorized
++          rescue ActiveRecord::RecordNotFound => e
++            Rails.logger.error "User Not Found: #{e.message}"
++            render json: { error: "Invalid refresh token" }, status: :unauthorized
++          rescue StandardError => e
++            Rails.logger.error "Token refresh error: #{e.message}"
++            if e.message == "Access token not provided"
++              render json: { error: "Token not provided" }, status: :unauthorized
++            else
++              render json: { error: "Invalid refresh token" }, status: :unauthorized
++            end
++          end
++        end
++
++        private
++
++        def validate_access_token_for_legacy_mode(user)
++          token = request.headers["Authorization"]
++          if token.present?
++            begin
++              token = token.gsub('Bearer ', '')
++              decoded_token = token_service.decode_token(token)
++              unless decoded_token["user_id"] == user.id
++                raise StandardError, "User Token didn't match Refresh Token"
++              end
++            rescue JWT::DecodeError, JWT::ExpiredSignature, JWT::InvalidIssuerError, JWT::InvalidIatError => e
++              Rails.logger.error("JWT validation error: #{e.message}")
++              raise StandardError, "Invalid access token"
++            rescue => e
++              Rails.logger.error("Access token validation error: #{e.message}")
++              raise StandardError, "Invalid access token"
++            end
++          else
++            raise StandardError, "Access token not provided"
++          end
++        end
++
++        def handle_device_mismatch_error(exception)
++          Rails.logger.error "Device Mismatch Error: #{exception.message}"
++          render json: { error: "Device mismatch detected" }, status: :unauthorized
++        end
++
++        def handle_token_reuse_error(exception)
++          Rails.logger.error "Token Reuse Error: #{exception.message}"
++          render json: { error: "Token reuse detected" }, status: :unauthorized
++        end
++
++        def handle_invalid_token_family_error(exception)
++          Rails.logger.error "Invalid Token Family Error: #{exception.message}"
++          render json: { error: "Invalid token family" }, status: :unauthorized
++        end
++
++        def token_service
++          ::Users::TokenService
++        end
++      end
++    end
++  end
++end
++
+diff --git a/app/controllers/concerns/authenticable.rb b/app/controllers/concerns/authenticable.rb
+index 2d67024..54d8f2d 100644
+--- a/app/controllers/concerns/authenticable.rb
++++ b/app/controllers/concerns/authenticable.rb
+@@ -5,7 +5,7 @@ module Authenticable
+   extend ActiveSupport::Concern
+ 
+   included do
+-    before_action :authenticate_admin_user!
++    # Don't set a default before_action here - let controllers decide
+   end
+ 
+   def authenticate_admin_user!
+@@ -44,7 +44,47 @@ module Authenticable
+     end
+   end
+ 
++  def authenticate_user!
++    token = request.headers["Authorization"]
++    if token.present?
++      begin
++        if token == "dev" && Rails.env.development?
++          @current_user = User.first
++          return
++        end
++        # remove Bearer from token string
++        token = token.gsub('Bearer ', '')
++        decoded_token = Users::TokenService.decode_token(token)
++        @current_user = User.find(decoded_token["user_id"])
++
++        # Validate token_id exists in active TokenFamily (for device-bound tokens)
++        if decoded_token['token_id']
++          token_family = TokenFamily.find_by(
++            user: @current_user,
++            latest_token_id: decoded_token['token_id']
++          )
++
++          unless token_family
++            Rails.logger.error("Token has been invalidated: token_id=#{decoded_token['token_id']}")
++            return render json: { error: "Token has been invalidated" }, status: :unauthorized
++          end
++        end
++        # If no token_id, it's a legacy token (backward compatibility)
++
++      rescue => e
++        Rails.logger.error("Authentication error: #{e.message}")
++        render json: { error: "Invalid token" }, status: :unauthorized
++      end
++    else
++      render json: { error: "Token not provided" }, status: :unauthorized
++    end
++  end
++
+   def current_admin_user
+     @current_admin_user
+   end
++
++  def current_user
++    @current_user
++  end
+ end
+diff --git a/app/models/prompt.rb b/app/models/prompt.rb
+index 5caa6b8..c6564e9 100644
+--- a/app/models/prompt.rb
++++ b/app/models/prompt.rb
+@@ -14,6 +14,7 @@ class Prompt < ApplicationRecord
+   validates :content, presence: true
+   validates :status, presence: true, inclusion: { in: %w[active inactive draft] }
+   validates :current_version, presence: true, numericality: { greater_than: 0 }
++  validates :credits, presence: true, numericality: { greater_than: 0 }
+ 
+   # Scopes
+   scope :active, -> { where(status: 'active') }
+diff --git a/app/models/token_family.rb b/app/models/token_family.rb
+index d6a0cdf..743ff0f 100644
+--- a/app/models/token_family.rb
++++ b/app/models/token_family.rb
+@@ -2,21 +2,27 @@
+ 
+ class TokenFamily < ApplicationRecord
+   # Associations
+-  belongs_to :admin_user
++  belongs_to :admin_user, optional: true
++  belongs_to :user, optional: true
+ 
+   # Validations
+   validates :family_id, presence: true, uniqueness: true
+   validates :latest_token_id, presence: true
+   validates :version, presence: true, numericality: { greater_than: 0 }
+   validates :device_fingerprint, presence: true
++  validate :either_admin_user_or_user
+ 
+   # Class methods
+   def self.find_by_family_id(family_id)
+     find_by(family_id: family_id)
+   end
+ 
+-  def self.delete_all_for_user(admin_user_id)
+-    where(admin_user_id: admin_user_id).delete_all
++  def self.delete_all_for_user(user_id, user_type = :admin_user)
++    if user_type == :user
++      where(user_id: user_id).delete_all
++    else
++      where(admin_user_id: user_id).delete_all
++    end
+   end
+ 
+   # Instance methods
+@@ -30,4 +36,14 @@ class TokenFamily < ApplicationRecord
+     self.version += 1
+     save!
+   end
++
++  private
++
++  def either_admin_user_or_user
++    if admin_user_id.blank? && user_id.blank?
++      errors.add(:base, "Either admin_user or user must be present")
++    elsif admin_user_id.present? && user_id.present?
++      errors.add(:base, "Cannot have both admin_user and user")
++    end
++  end
+ end
+diff --git a/app/models/user.rb b/app/models/user.rb
+new file mode 100644
+index 0000000..1c95525
+--- /dev/null
++++ b/app/models/user.rb
+@@ -0,0 +1,32 @@
++# frozen_string_literal: true
++
++class User < ApplicationRecord
++  # Include default devise modules. Others available are:
++  # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
++  devise :database_authenticatable, :recoverable, :rememberable, :validatable
++
++  # Validations
++  validates :email, presence: true, uniqueness: true
++  validates :credits, presence: true, numericality: { greater_than_or_equal_to: 0 }
++
++  # Associations
++  has_many :token_families, dependent: :destroy
++
++  # Instance methods
++  def has_sufficient_credits?(amount)
++    credits >= amount
++  end
++
++  def deduct_credits!(amount)
++    raise "Insufficient credits" unless has_sufficient_credits?(amount)
++    update!(credits: credits - amount)
++  end
++
++  def add_credits!(amount)
++    update!(credits: credits + amount)
++  end
++
++  def update_last_seen!
++    update!(last_seen: Time.current)
++  end
++end
+diff --git a/app/services/prompt_processing_service.rb b/app/services/prompt_processing_service.rb
+index 8df578a..4787f3d 100644
+--- a/app/services/prompt_processing_service.rb
++++ b/app/services/prompt_processing_service.rb
+@@ -3,6 +3,7 @@
+ class PromptProcessingService
+   # Custom error classes
+   class PromptNotFoundError < StandardError; end
++  class MissingParameterError < StandardError; end
+ 
+   attr_reader :temperature, :model
+ 
+@@ -12,6 +13,7 @@ class PromptProcessingService
+   end
+ 
+   def process_and_query(prompt_key: nil, query: nil, parameters: {}, chat_id: nil)
++
+     validate_parameters({ prompt_key: prompt_key, query: query })
+ 
+     prompt = find_prompt(prompt_key)
+diff --git a/app/services/users/token_service.rb b/app/services/users/token_service.rb
+new file mode 100644
+index 0000000..6f4ce39
+--- /dev/null
++++ b/app/services/users/token_service.rb
+@@ -0,0 +1,137 @@
++# frozen_string_literal: true
++
++module Users
++  class TokenService
++    # Custom error classes
++    class DeviceMismatchError < StandardError; end
++    class TokenReuseError < StandardError; end
++    class InvalidTokenFamilyError < StandardError; end
++
++    def self.encode_user_token(user_id, timeout: 5 * 60) # 5 minutes
++      payload = { user_id: user_id, exp: Time.now.to_i + timeout }
++      encode(payload)
++    end
++
++    def self.encode_user_token_with_token_id(user_id, token_id, timeout: 5 * 60) # 5 minutes
++      payload = {
++        user_id: user_id,
++        token_id: token_id,
++        exp: Time.now.to_i + timeout
++      }
++      encode(payload)
++    end
++
++    def self.encode_refresh_token(user_id, timeout: 7 * 86_400) # 7 days
++      payload = { user_id: user_id, exp: Time.now.to_i + timeout }
++      encode(payload)
++    end
++
++    def self.encode_refresh_token_with_metadata(user_id, family_id, token_id, device_fingerprint, version, timeout: 7 * 86_400)
++      payload = {
++        user_id: user_id,
++        family_id: family_id,
++        token_id: token_id,
++        device_fingerprint: device_fingerprint,
++        version: version,
++        exp: Time.now.to_i + timeout
++      }
++      encode(payload)
++    end
++
++    def self.issue_token_with_rotation(user, device_fingerprint)
++      family_id = SecureRandom.uuid
++      token_id = SecureRandom.uuid
++
++      # Create access token with token_id
++      access_token = encode_user_token_with_token_id(user.id, token_id)
++
++      # Create refresh token with metadata
++      refresh_token = encode_refresh_token_with_metadata(
++        user.id,
++        family_id,
++        token_id,
++        device_fingerprint,
++        1
++      )
++
++      # Store token family
++      TokenFamily.create!(
++        family_id: family_id,
++        user: user,
++        latest_token_id: token_id,
++        version: 1,
++        device_fingerprint: device_fingerprint
++      )
++
++      # Update last_seen
++      user.update_last_seen!
++
++      { access_token: access_token, refresh_token: refresh_token }
++    end
++
++    def self.rotate_refresh_token(old_token, device_fingerprint)
++      payload = decode_token(old_token)
++
++      # Get token family
++      token_family = TokenFamily.find_by_family_id(payload['family_id'])
++      raise InvalidTokenFamilyError, 'Invalid token family' unless token_family
++
++      # Verify device binding
++      if token_family.device_fingerprint != device_fingerprint
++        raise DeviceMismatchError, 'Device mismatch detected'
++      end
++
++      # Verify token version and detect reuse
++      if token_family.version != payload['version'] || token_family.latest_token_id != payload['token_id']
++        raise TokenReuseError, 'Token reuse detected'
++      end
++
++      # Generate new tokens
++      new_token_id = SecureRandom.uuid
++      new_version = payload['version'] + 1
++
++      # Update token family
++      token_family.update_token!(new_token_id)
++
++      # Generate new tokens
++      access_token = encode_user_token_with_token_id(payload['user_id'], new_token_id)
++      refresh_token = encode_refresh_token_with_metadata(
++        payload['user_id'],
++        payload['family_id'],
++        new_token_id,
++        device_fingerprint,
++        new_version
++      )
++
++      # Update last_seen
++      User.find(payload['user_id']).update_last_seen!
++
++      { access_token: access_token, refresh_token: refresh_token }
++    end
++
++    def self.logout_session(refresh_token)
++      begin
++        payload = decode_token(refresh_token)
++        token_family = TokenFamily.find_by_family_id(payload['family_id'])
++        token_family&.destroy
++        { success: true, message: 'Successfully logged out' }
++      rescue => e
++        { success: false, message: 'Invalid session' }
++      end
++    end
++
++    def self.logout_all_sessions(user_id)
++      sessions_terminated = TokenFamily.delete_all_for_user(user_id)
++      { success: true, sessions_terminated: sessions_terminated }
++    end
++
++    def self.decode_token(token)
++      JWT.decode(token, Rails.application.secret_key_base)[0]
++    end
++
++    def self.encode(payload)
++      JWT.encode(payload, Rails.application.secret_key_base)
++    end
++  end
++end
++
+diff --git a/config/routes.rb b/config/routes.rb
+index 6676836..7b3296c 100644
+--- a/config/routes.rb
++++ b/config/routes.rb
+@@ -2,6 +2,7 @@
+ 
+ Rails.application.routes.draw do
+   devise_for :admin_users, ActiveAdmin::Devise.config
++  devise_for :users
+   ActiveAdmin.routes(self)
+ 
+   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
+@@ -13,7 +14,7 @@ Rails.application.routes.draw do
+   # API routes
+   namespace :api do
+     namespace :v1 do
+-      # Authentication routes
++      # Admin user authentication routes
+       namespace :admin_users do
+         post 'login', to: 'sessions#create'
+         post 'refresh', to: 'tokens#refresh'
+@@ -21,6 +22,15 @@ Rails.application.routes.draw do
+         post 'logout_all', to: 'logout#logout_all'
+       end
+ 
++      # User authentication routes
++      namespace :users do
++        post 'login', to: 'sessions#create'
++        post 'refresh', to: 'tokens#refresh'
++        post 'logout', to: 'logout#logout'
++        post 'logout_all', to: 'logout#logout_all'
++        get 'credits', to: 'credits#show'
++      end
++
+       resources :prompts, only: [] do
+         collection do
+           post :process_prompt, path: 'process'
+diff --git a/db/migrate/20260123093633_create_users.rb b/db/migrate/20260123093633_create_users.rb
+new file mode 100644
+index 0000000..fae9c3c
+--- /dev/null
++++ b/db/migrate/20260123093633_create_users.rb
+@@ -0,0 +1,14 @@
++class CreateUsers < ActiveRecord::Migration[8.0]
++  def change
++    create_table :users do |t|
++      t.string :email, null: false
++      t.string :encrypted_password, null: false
++      t.datetime :last_seen
++      t.integer :credits, default: 0, null: false
++
++      t.timestamps
++    end
++
++    add_index :users, :email, unique: true
++  end
++end
+diff --git a/db/migrate/20260123093702_add_credits_to_prompts.rb b/db/migrate/20260123093702_add_credits_to_prompts.rb
+new file mode 100644
+index 0000000..475b5d8
+--- /dev/null
++++ b/db/migrate/20260123093702_add_credits_to_prompts.rb
+@@ -0,0 +1,5 @@
++class AddCreditsToPrompts < ActiveRecord::Migration[8.0]
++  def change
++    add_column :prompts, :credits, :integer, default: 1, null: false
++  end
++end
+diff --git a/db/migrate/20260123093815_add_user_to_token_families.rb b/db/migrate/20260123093815_add_user_to_token_families.rb
+new file mode 100644
+index 0000000..4541fb2
+--- /dev/null
++++ b/db/migrate/20260123093815_add_user_to_token_families.rb
+@@ -0,0 +1,5 @@
++class AddUserToTokenFamilies < ActiveRecord::Migration[8.0]
++  def change
++    add_reference :token_families, :user, null: true, foreign_key: true
++  end
++end
+diff --git a/db/schema.rb b/db/schema.rb
+index 89e9e3d..346d913 100644
+--- a/db/schema.rb
++++ b/db/schema.rb
+@@ -10,7 +10,7 @@
+ #
+ # It's strongly recommended that you check this file into your version control system.
+ 
+-ActiveRecord::Schema[8.0].define(version: 2026_01_12_115059) do
++ActiveRecord::Schema[8.0].define(version: 2026_01_23_093815) do
+   # These are extensions that must be enabled in order to support this database
+   enable_extension "pg_catalog.plpgsql"
+ 
+@@ -107,6 +107,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_12_115059) do
+     t.datetime "updated_at", null: false
+     t.text "tags"
+     t.bigint "allowed_model_id"
++    t.integer "credits", default: 1, null: false
+     t.index ["allowed_model_id"], name: "index_prompts_on_allowed_model_id"
+     t.index ["category"], name: "index_prompts_on_category"
+     t.index ["created_by_id"], name: "index_prompts_on_created_by_id"
+@@ -124,9 +125,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_12_115059) do
+     t.string "device_fingerprint", null: false
+     t.datetime "created_at", null: false
+     t.datetime "updated_at", null: false
++    t.bigint "user_id"
+     t.index ["admin_user_id", "device_fingerprint"], name: "index_token_families_on_admin_user_id_and_device_fingerprint"
+     t.index ["admin_user_id"], name: "index_token_families_on_admin_user_id"
+     t.index ["family_id"], name: "index_token_families_on_family_id", unique: true
++    t.index ["user_id"], name: "index_token_families_on_user_id"
++  end
++
++  create_table "users", force: :cascade do |t|
++    t.string "email", null: false
++    t.string "encrypted_password", null: false
++    t.datetime "last_seen"
++    t.integer "credits", default: 0, null: false
++    t.datetime "created_at", null: false
++    t.datetime "updated_at", null: false
++    t.index ["email"], name: "index_users_on_email", unique: true
+   end
+ 
+   add_foreign_key "prompt_versions", "admin_users", column: "created_by_id"
+@@ -135,4 +148,5 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_12_115059) do
+   add_foreign_key "prompts", "admin_users", column: "updated_by_id"
+   add_foreign_key "prompts", "allowed_models"
+   add_foreign_key "token_families", "admin_users"
++  add_foreign_key "token_families", "users"
+ end
+diff --git a/spec/controllers/api/v1/prompts_controller_spec.rb b/spec/controllers/api/v1/prompts_controller_spec.rb
+index 18e3bac..cf89f34 100644
+--- a/spec/controllers/api/v1/prompts_controller_spec.rb
++++ b/spec/controllers/api/v1/prompts_controller_spec.rb
+@@ -6,9 +6,9 @@ RSpec.describe Api::V1::PromptsController, type: :controller do
+   let(:mock_service) { double('PromptProcessingService') }
+   let(:mock_response) { double('Response', content: 'LLM response content') }
+   let(:mock_ai_log) { double('AiLog', id: 1) }
+-  let(:mock_prompt) { double('Prompt', name: 'test_prompt') }
+-  let(:admin_user) { create(:admin_user) }
+-  let(:valid_token) { AdminUsers::TokenService.encode_user_token(admin_user.id) }
++  let(:mock_prompt) { double('Prompt', name: 'test_prompt', credits: 1) }
++  let(:user) { create(:user, credits: 100) }
++  let(:valid_token) { Users::TokenService.encode_user_token(user.id) }
+ 
+   let(:service_result) do
+     {
+@@ -23,6 +23,7 @@ RSpec.describe Api::V1::PromptsController, type: :controller do
+   before do
+     allow(PromptProcessingService).to receive(:new).and_return(mock_service)
+     allow(mock_service).to receive(:process_and_query).and_return(service_result)
++    allow(Prompt).to receive(:find_by!).and_return(mock_prompt)
+   end
+ 
+   describe 'authentication' do
+diff --git a/spec/factories/users.rb b/spec/factories/users.rb
+new file mode 100644
+index 0000000..30df0ed
+--- /dev/null
++++ b/spec/factories/users.rb
+@@ -0,0 +1,9 @@
++FactoryBot.define do
++  factory :user do
++    sequence(:email) { |n| "user#{n}@example.com" }
++    password { 'password123' }
++    password_confirmation { 'password123' }
++    last_seen { Time.current }
++    credits { 0 }
++  end
++end
+diff --git a/spec/models/token_family_spec.rb b/spec/models/token_family_spec.rb
+index 5c516c3..ebb6b30 100644
+--- a/spec/models/token_family_spec.rb
++++ b/spec/models/token_family_spec.rb
+@@ -57,7 +57,8 @@ RSpec.describe TokenFamily, type: :model do
+   end
+ 
+   describe 'associations' do
+-    it { should belong_to(:admin_user) }
++    it { should belong_to(:admin_user).optional }
++    it { should belong_to(:user).optional }
+   end
+ 
+   describe 'indexes' do
+diff --git a/spec/models/user_spec.rb b/spec/models/user_spec.rb
+new file mode 100644
+index 0000000..47a31bb
+--- /dev/null
++++ b/spec/models/user_spec.rb
+@@ -0,0 +1,5 @@
++require 'rails_helper'
++
++RSpec.describe User, type: :model do
++  pending "add some examples to (or delete) #{__FILE__}"
++end

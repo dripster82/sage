@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_23_093815) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_23_174529) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -52,6 +52,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_23_093815) do
     t.integer "output_tokens"
     t.decimal "total_cost", precision: 10, scale: 7
     t.uuid "session_uuid"
+    t.integer "prompt_id"
+    t.text "prompt_key"
+    t.integer "duration_ms"
     t.index ["session_uuid"], name: "index_ai_logs_on_session_uuid"
   end
 

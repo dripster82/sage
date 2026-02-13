@@ -3,7 +3,7 @@
 ActiveAdmin.register AiLog do
   menu parent: "Ai Admin"
 
-  permit_params :model, :settings, :query, :response, :chat_id, :input_tokens, :session_uuid, :output_tokens
+  permit_params :model, :settings, :query, :response, :chat_id, :input_tokens, :session_uuid, :output_tokens, :prompt_key, :duration_ms
 
   config.batch_actions = false
 
@@ -12,6 +12,13 @@ ActiveAdmin.register AiLog do
     id_column
     column :model do |ai_log|
       ai_log.model_display_name
+    end
+    column :prompt_key do |ai_log|
+      if ai_log.prompt_key.present?
+        truncate(ai_log.prompt_key, length: 50)
+      else
+        span "Not matched", class: "text-gray-500"
+      end
     end
     column :query do |ai_log|
       truncate(ai_log.query_preview(80), length: 80)

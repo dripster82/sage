@@ -24,7 +24,7 @@ class PromptProcessingService
 
     # Use the existing LLM QueryService for the actual query
     llm_service = Llm::QueryService.new(temperature: @temperature, model: effective_model)
-    response = llm_service.ask(processed_prompt, chat_id: chat_id)
+    response = llm_service.ask(processed_prompt, chat_id: chat_id, prompt_key: prompt_key)
 
     {
       processed_prompt: processed_prompt,
