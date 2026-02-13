@@ -3,6 +3,12 @@
 Rails.application.routes.draw do
   devise_for :admin_users, ActiveAdmin::Devise.config
   devise_for :users
+
+  # Admin routes
+  namespace :admin do
+    post 'ai_logs/model_test', to: 'ai_logs#model_test'
+  end
+
   ActiveAdmin.routes(self)
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

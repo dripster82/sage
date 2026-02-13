@@ -33,7 +33,7 @@ namespace :prompts do
         prompt_last = prompt_lines.last&.strip
 
         # Match if first and last lines are the same
-        first_line == prompt_first && last_line == prompt_last
+        first_line == prompt_first #&& last_line == prompt_last
       end
 
       if matching_prompt

@@ -669,9 +669,8 @@ ActiveAdmin.register_page "AI Test" do
             input "", type: "text", id: "model-search", placeholder: "Search and select a model...", autocomplete: "off"
             input "", type: "hidden", id: "model-select", name: "model_id"
             div "", id: "model-dropdown", class: "dropdown" do
-              AllowedModel.active.order(:name).each do |model|
-                pricing_str = model.pricing_display
-                div "#{model.name} (#{model.provider}) - #{model.context_size} tokens - #{pricing_str}", class: "dropdown-item", "data-value": model.model, "data-provider": model.provider, "data-context": model.context_size
+              model_dropdown_options_for_js.each do |model_data|
+                div model_data[:name], class: "dropdown-item", "data-value": model_data[:id], "data-provider": model_data[:provider], "data-context": model_data[:context]
               end
             end
           end

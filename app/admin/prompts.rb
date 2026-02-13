@@ -321,11 +321,7 @@ ActiveAdmin.register Prompt do
       f.input :status, as: :select, collection: %w[active inactive draft]
       f.input :credits, as: :number, input_html: { min: 1, value: f.object.credits || 1 }
       f.input :allowed_model, as: :select,
-              collection: AllowedModel.active.order(:name).map { |m|
-                context_str = m.context_size ? "#{m.context_size} tokens" : "Unknown context"
-                pricing_str = m.pricing_display
-                ["#{m.display_name} - #{context_str} - #{pricing_str}", m.id]
-              },
+              collection: model_dropdown_options,
               include_blank: "Use default model",
               hint: "Select a specific model for this prompt, or leave blank to use the default model"
       f.input :content, as: :text, input_html: { rows: 25 }
