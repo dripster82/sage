@@ -42,6 +42,12 @@ Rails.application.routes.draw do
           post :process_prompt, path: 'process'
         end
       end
+
+      resources :prompt_flows, only: [:create, :show, :update] do
+        member do
+          post :execute
+        end
+      end
     end
   end
 
