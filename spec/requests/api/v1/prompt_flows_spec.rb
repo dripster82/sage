@@ -227,4 +227,36 @@ RSpec.describe 'API V1 PromptFlows', type: :request do
       expect(json.dig('data', 'outputs')).to eq({ 'output' => 'ok' })
     end
   end
+
+  describe 'GET /api/v1/prompt_flows/:prompt_flow_id/executions' do
+    it 'lists executions for a flow' do
+      flow = create(:prompt_flow)
+      exec1 = create(:prompt_flow_execution, prompt_flow: flow)
+      exec2 = create(:prompt_flow_execution, prompt_flow: flow)
+
+      get "/api/v1/prompt_flows/#{flow.id}/executions", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json['success']).to be true
+      expect(json.dig('data', 'executions').size).to eq(2)
+      ids = json.dig('data', 'executions').map { |e| e['id'] }
+      expect(ids).to include(exec1.id, exec2.id)
+    end
+  end
+
+  describe 'GET /api/v1/prompt_flows/:prompt_flow_id/executions/:id' do
+    it 'returns a single execution' do
+      flow = create(:prompt_flow)
+      execution = create(:prompt_flow_execution, prompt_flow: flow, status: 'completed', outputs: { 'output' => 'ok' })
+
+      get "/api/v1/prompt_flows/#{flow.id}/executions/#{execution.id}", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json['success']).to be true
+      expect(json.dig('data', 'execution', 'id')).to eq(execution.id)
+      expect(json.dig('data', 'execution', 'outputs')).to eq({ 'output' => 'ok' })
+    end
+  end
 end

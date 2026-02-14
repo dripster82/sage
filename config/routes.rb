@@ -47,6 +47,7 @@ Rails.application.routes.draw do
         member do
           post :execute
         end
+        resources :executions, only: [:index, :show], controller: 'prompt_flow_executions'
       end
     end
   end
