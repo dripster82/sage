@@ -44,3 +44,4 @@
 
 # Database backups (local only, not committed to git)
 /backups
+docs/blueprints/*

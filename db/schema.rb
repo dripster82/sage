@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_23_174529) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_14_090030) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -73,6 +73,68 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_23_174529) do
     t.index ["default"], name: "index_allowed_models_on_default"
     t.index ["model"], name: "index_allowed_models_on_model", unique: true
     t.index ["provider"], name: "index_allowed_models_on_provider"
+  end
+
+  create_table "prompt_flow_edges", force: :cascade do |t|
+    t.bigint "prompt_flow_id", null: false
+    t.bigint "source_node_id", null: false
+    t.bigint "target_node_id", null: false
+    t.string "source_port", null: false
+    t.string "target_port", null: false
+    t.string "validation_status"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["prompt_flow_id"], name: "index_prompt_flow_edges_on_prompt_flow_id"
+    t.index ["source_node_id"], name: "index_prompt_flow_edges_on_source_node_id"
+    t.index ["target_node_id"], name: "index_prompt_flow_edges_on_target_node_id"
+  end
+
+  create_table "prompt_flow_executions", force: :cascade do |t|
+    t.bigint "prompt_flow_id", null: false
+    t.string "status", default: "pending", null: false
+    t.json "inputs", default: {}
+    t.json "outputs", default: {}
+    t.json "execution_log", default: []
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["prompt_flow_id"], name: "index_prompt_flow_executions_on_prompt_flow_id"
+    t.index ["status"], name: "index_prompt_flow_executions_on_status"
+  end
+
+  create_table "prompt_flow_nodes", force: :cascade do |t|
+    t.bigint "prompt_flow_id", null: false
+    t.string "node_type", null: false
+    t.bigint "prompt_id"
+    t.integer "position_x"
+    t.integer "position_y"
+    t.json "config", default: {}
+    t.json "input_ports", default: {}
+    t.json "output_ports", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["node_type"], name: "index_prompt_flow_nodes_on_node_type"
+    t.index ["prompt_flow_id"], name: "index_prompt_flow_nodes_on_prompt_flow_id"
+    t.index ["prompt_id"], name: "index_prompt_flow_nodes_on_prompt_id"
+  end
+
+  create_table "prompt_flows", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "description"
+    t.string "status", default: "draft", null: false
+    t.integer "version_number", default: 1, null: false
+    t.boolean "is_current", default: true, null: false
+    t.integer "max_executions", default: 20, null: false
+    t.bigint "created_by_id", null: false
+    t.bigint "updated_by_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_prompt_flows_on_created_by_id"
+    t.index ["is_current"], name: "index_prompt_flows_on_is_current"
+    t.index ["name"], name: "index_prompt_flows_on_name", unique: true
+    t.index ["status"], name: "index_prompt_flows_on_status"
+    t.index ["updated_by_id"], name: "index_prompt_flows_on_updated_by_id"
+    t.index ["version_number"], name: "index_prompt_flows_on_version_number"
   end
 
   create_table "prompt_versions", force: :cascade do |t|
@@ -145,6 +207,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_23_174529) do
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
+  add_foreign_key "prompt_flow_edges", "prompt_flow_nodes", column: "source_node_id"
+  add_foreign_key "prompt_flow_edges", "prompt_flow_nodes", column: "target_node_id"
+  add_foreign_key "prompt_flow_edges", "prompt_flows"
+  add_foreign_key "prompt_flow_executions", "prompt_flows"
+  add_foreign_key "prompt_flow_nodes", "prompt_flows"
+  add_foreign_key "prompt_flow_nodes", "prompts"
+  add_foreign_key "prompt_flows", "admin_users", column: "created_by_id"
+  add_foreign_key "prompt_flows", "admin_users", column: "updated_by_id"
   add_foreign_key "prompt_versions", "admin_users", column: "created_by_id"
   add_foreign_key "prompt_versions", "prompts"
   add_foreign_key "prompts", "admin_users", column: "created_by_id"
