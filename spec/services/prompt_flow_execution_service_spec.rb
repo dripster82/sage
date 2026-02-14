@@ -52,4 +52,88 @@ RSpec.describe PromptFlowExecutionService, type: :service do
         .to raise_error(PromptFlowExecutionService::CycleDetectedError)
     end
   end
+
+  describe '#execute' do
+    it 'executes a simple flow and records outputs' do
+      flow = create(:prompt_flow)
+      input_node = create(:prompt_flow_node,
+                          prompt_flow: flow,
+                          node_type: 'input',
+                          output_ports: { 'query' => {}, 'text' => {} })
+      prompt = create(:prompt, name: 'test_prompt')
+      prompt_node = create(:prompt_flow_node,
+                           prompt_flow: flow,
+                           node_type: 'prompt',
+                           prompt: prompt,
+                           input_ports: { 'query' => {}, 'text' => {} },
+                           output_ports: { 'output' => {} })
+      output_node = create(:prompt_flow_node,
+                           prompt_flow: flow,
+                           node_type: 'output',
+                           input_ports: { 'output' => {} })
+
+      create(:prompt_flow_edge,
+             prompt_flow: flow,
+             source_node: input_node,
+             target_node: prompt_node,
+             source_port: 'query',
+             target_port: 'query')
+      create(:prompt_flow_edge,
+             prompt_flow: flow,
+             source_node: input_node,
+             target_node: prompt_node,
+             source_port: 'text',
+             target_port: 'text')
+      create(:prompt_flow_edge,
+             prompt_flow: flow,
+             source_node: prompt_node,
+             target_node: output_node,
+             source_port: 'output',
+             target_port: 'output')
+
+      mock_response = 'ok'
+      service_double = instance_double(PromptProcessingService)
+      allow(PromptProcessingService).to receive(:new).and_return(service_double)
+      allow(service_double).to receive(:process_and_query).and_return(
+        response: mock_response
+      )
+
+      execution = described_class.new(flow).execute(inputs: { 'query' => 'hello', 'text' => 'world' })
+
+      expect(execution.status).to eq('completed')
+      expect(execution.outputs).to eq({ 'output' => 'ok' })
+      expect(execution.execution_log.size).to eq(3)
+    end
+
+    it 'fails when max execution limit is exceeded' do
+      flow = create(:prompt_flow, max_executions: 1)
+      input_node = create(:prompt_flow_node,
+                          prompt_flow: flow,
+                          node_type: 'input',
+                          output_ports: { 'query' => {} })
+      prompt = create(:prompt, name: 'test_prompt')
+      prompt_node = create(:prompt_flow_node,
+                           prompt_flow: flow,
+                           node_type: 'prompt',
+                           prompt: prompt,
+                           input_ports: { 'query' => {} },
+                           output_ports: { 'output' => {} })
+
+      create(:prompt_flow_edge,
+             prompt_flow: flow,
+             source_node: input_node,
+             target_node: prompt_node,
+             source_port: 'query',
+             target_port: 'query')
+
+      service_double = instance_double(PromptProcessingService)
+      allow(PromptProcessingService).to receive(:new).and_return(service_double)
+      allow(service_double).to receive(:process_and_query).and_return(
+        response: 'ok'
+      )
+
+      expect { described_class.new(flow).execute(inputs: { 'query' => 'hi' }) }
+        .to raise_error(PromptFlowExecutionService::ExecutionLimitError)
+    end
+  end
 end
