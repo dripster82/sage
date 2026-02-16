@@ -92,6 +92,255 @@ ActiveAdmin.register PromptFlow do
     redirect_to edit_admin_prompt_flow_path(draft), notice: 'Draft duplicated from selected version.'
   end
 
+  member_action :test_execute, method: :post do
+    flow = resource
+    mode = params[:mode].to_s
+    mode = 'evaluate' unless %w[simulate evaluate].include?(mode)
+    graph_payload = params[:graph]
+    graph_payload = graph_payload.to_unsafe_h if graph_payload.is_a?(ActionController::Parameters)
+    inputs_payload = params[:inputs].is_a?(ActionController::Parameters) ? params[:inputs].to_unsafe_h : (params[:inputs] || {})
+
+    result = nil
+    validation_errors = []
+    simulation_errors = []
+
+    if mode == 'simulate'
+      graph = graph_payload.presence || flow.graph_json
+      if graph.is_a?(String)
+        begin
+          graph = JSON.parse(graph)
+        rescue JSON::ParserError
+          graph = {}
+        end
+      end
+      graph = graph.to_h
+
+      nodes = Array(graph['nodes'] || graph[:nodes])
+      edges = Array(graph['edges'] || graph[:edges])
+      node_by_id = nodes.index_by { |node| (node['id'] || node[:id]).to_s }
+      prompt_ids = nodes.filter_map { |n| n['prompt_id'] || n[:prompt_id] }.uniq
+      prompt_names = Prompt.where(id: prompt_ids).pluck(:id, :name).to_h
+
+      node_label = lambda do |node|
+        node_type = (node['node_type'] || node[:node_type]).to_s
+        case node_type
+        when 'input'
+          cfg = node['config'] || node[:config] || {}
+          key = cfg['param_key'] || cfg[:param_key]
+          "Input node (param: #{key.presence || 'unset'})"
+        when 'prompt'
+          prompt_id = node['prompt_id'] || node[:prompt_id]
+          prompt_name = prompt_names[prompt_id] || "prompt_id:#{prompt_id}"
+          "Prompt node (#{prompt_name})"
+        when 'output'
+          'Output node'
+        when 'start'
+          'Start node'
+        else
+          "#{node_type.capitalize} node"
+        end
+      end
+
+      flow_edges = edges.select do |edge|
+        (edge['source_port'] || edge[:source_port]).to_s == 'flow' &&
+          (edge['target_port'] || edge[:target_port]).to_s == 'flow'
+      end
+      var_edges = edges.reject { |edge| flow_edges.include?(edge) }
+
+      flow_out = Hash.new { |h, k| h[k] = [] }
+      flow_edges.each do |edge|
+        source = (edge['source_node_id'] || edge[:source_node_id]).to_s
+        target = (edge['target_node_id'] || edge[:target_node_id]).to_s
+        flow_out[source] << target
+      end
+
+      start_ids = nodes
+                  .select { |n| (n['node_type'] || n[:node_type]).to_s == 'start' }
+                  .map { |n| (n['id'] || n[:id]).to_s }
+      output_ids = nodes
+                   .select { |n| (n['node_type'] || n[:node_type]).to_s == 'output' }
+                   .map { |n| (n['id'] || n[:id]).to_s }
+
+      if start_ids.empty?
+        simulation_errors << { type: :missing_start_node, message: 'Flow must contain a start node.' }
+      end
+      if output_ids.empty?
+        simulation_errors << { type: :missing_output_node, message: 'Flow must contain an output node.' }
+      end
+
+      reachable_flow = Set.new
+      queue = start_ids.dup
+      until queue.empty?
+        current = queue.shift
+        next if reachable_flow.include?(current)
+
+        reachable_flow.add(current)
+        flow_out[current].each { |target| queue << target }
+      end
+
+      path_to_output = output_ids.any? { |id| reachable_flow.include?(id) }
+      unless simulation_errors.any? || path_to_output
+        simulation_errors << {
+          type: :missing_start_to_output_path,
+          message: 'No flow path exists from Start node to Output node.'
+        }
+      end
+
+      incoming_var = Hash.new { |h, k| h[k] = [] }
+      outgoing_var = Hash.new { |h, k| h[k] = [] }
+      var_edges.each do |edge|
+        source = (edge['source_node_id'] || edge[:source_node_id]).to_s
+        source_port = (edge['source_port'] || edge[:source_port]).to_s
+        target = (edge['target_node_id'] || edge[:target_node_id]).to_s
+        target_port = (edge['target_port'] || edge[:target_port]).to_s
+        outgoing_var[[source, source_port]] << edge
+        incoming_var[[target, target_port]] << edge
+      end
+
+      active_nodes = reachable_flow.dup
+      visit_dependencies = lambda do |node_id|
+        node = node_by_id[node_id]
+        return if node.nil?
+
+        input_ports = node['input_ports'] || node[:input_ports] || {}
+        Array(input_ports.keys).map(&:to_s).reject { |port| port == 'flow' }.each do |port|
+          (incoming_var[[node_id, port]] || []).each do |edge|
+            source = (edge['source_node_id'] || edge[:source_node_id]).to_s
+            next if active_nodes.include?(source)
+
+            active_nodes.add(source)
+            visit_dependencies.call(source)
+          end
+        end
+      end
+      reachable_flow.each { |id| visit_dependencies.call(id) }
+
+      active_nodes.each do |node_id|
+        node = node_by_id[node_id]
+        next if node.nil?
+        node_type = (node['node_type'] || node[:node_type]).to_s
+
+        if node_type == 'input'
+          cfg = node['config'] || node[:config] || {}
+          key = cfg['param_key'] || cfg[:param_key]
+          if key.blank?
+            simulation_errors << { type: :missing_input_key, message: "#{node_label.call(node)} is missing param key." }
+          end
+        end
+
+        input_ports = node['input_ports'] || node[:input_ports] || {}
+        Array(input_ports.keys).map(&:to_s).reject { |port| port == 'flow' }.each do |port|
+          connected = incoming_var[[node_id, port]].present?
+          next if connected
+
+          simulation_errors << {
+            type: :missing_input_edge,
+            message: "#{node_label.call(node)} is missing input for '#{port}'."
+          }
+        end
+
+        output_ports = node['output_ports'] || node[:output_ports] || {}
+        Array(output_ports.keys).map(&:to_s).reject { |port| port == 'flow' }.each do |port|
+          edges_for_port = outgoing_var[[node_id, port]] || []
+          connected_to_active = edges_for_port.any? do |edge|
+            target = (edge['target_node_id'] || edge[:target_node_id]).to_s
+            active_nodes.include?(target)
+          end
+          next if connected_to_active
+
+          simulation_errors << {
+            type: :unused_output_port,
+            message: "#{node_label.call(node)} has an unused output '#{port}'."
+          }
+        end
+      end
+
+      nodes.each do |node|
+        node_id = (node['id'] || node[:id]).to_s
+        node_type = (node['node_type'] || node[:node_type]).to_s
+        next if node_type == 'start'
+        next if active_nodes.include?(node_id)
+
+        simulation_errors << {
+          type: :orphaned_node,
+          message: "#{node_label.call(node)} is not used by the start-to-output flow."
+        }
+      end
+
+      if simulation_errors.any?
+        render json: { success: false, mode: mode, errors: simulation_errors }, status: :unprocessable_entity
+      else
+        render json: {
+          success: true,
+          mode: mode,
+          result: {
+            status: 'simulated',
+            outputs: {},
+            execution_log: [],
+            checks: {
+              nodes: nodes.size,
+              edges: edges.size,
+              active_nodes: active_nodes.size
+            }
+          }
+        }
+      end
+      return
+    end
+
+    eval_graph = graph_payload.presence || flow.graph_json
+    validation_errors = PromptFlowValidationService.new(flow, graph: eval_graph).call
+    if validation_errors.any?
+      render json: { success: false, mode: mode, errors: validation_errors }, status: :unprocessable_entity
+      return
+    end
+
+    eval_session = "PROMPT_FLOW_EVAL_#{SecureRandom.uuid}"
+    previous_ailog_session = Current.ailog_session
+    Current.ailog_session = eval_session
+    execution = nil
+    begin
+      execution = PromptFlowExecutionService.new(flow, graph: eval_graph).execute(inputs: inputs_payload)
+    ensure
+      Current.ailog_session = previous_ailog_session
+    end
+
+    eval_logs = AiLog.where(session_uuid: eval_session)
+    input_tokens = eval_logs.sum(:input_tokens).to_i
+    output_tokens = eval_logs.sum(:output_tokens).to_i
+    total_cost = eval_logs.sum(:total_cost).to_f
+    log_count = eval_logs.count
+
+    if log_count.zero? && execution.present?
+      metrics = Array(execution.execution_log).filter_map do |entry|
+        pm = entry['prompt_metrics'] || entry[:prompt_metrics]
+        pm if pm.is_a?(Hash)
+      end
+      log_count = metrics.filter_map { |m| m['ai_log_id'] || m[:ai_log_id] }.uniq.count
+      input_tokens = metrics.sum { |m| (m['input_tokens'] || m[:input_tokens]).to_i }
+      output_tokens = metrics.sum { |m| (m['output_tokens'] || m[:output_tokens]).to_i }
+      total_cost = metrics.sum { |m| (m['total_cost'] || m[:total_cost]).to_f }
+    end
+
+    result = {
+      status: execution.status,
+      outputs: execution.outputs,
+      execution_log: execution.execution_log,
+      error_message: execution.error_message,
+      ai_costs: {
+        total_cost: total_cost.round(6),
+        log_count: log_count,
+        input_tokens: input_tokens,
+        output_tokens: output_tokens,
+        total_tokens: input_tokens + output_tokens
+      }
+    }
+
+    render json: { success: true, mode: mode, result: result }
+  rescue StandardError => e
+    render json: { success: false, mode: mode, errors: [{ type: :execution_error, message: e.message }] }, status: :unprocessable_entity
+  end
+
   action_item :activate, only: :show, if: proc { !resource.is_current? } do
     link_to 'Set Active', activate_admin_prompt_flow_path(resource),
             method: :patch,
@@ -249,6 +498,16 @@ ActiveAdmin.register PromptFlow do
       div class: 'prompt-flow-palette', style: 'display:flex; gap:8px; margin-bottom:12px;' do
         button 'Add Input', type: 'button', id: 'prompt-flow-add-input', class: 'button'
         button 'Add Prompt', type: 'button', id: 'prompt-flow-add-prompt', class: 'button'
+        button 'Test Flow',
+               type: 'button',
+               id: 'prompt-flow-test-simulate',
+               class: 'button',
+               title: (flow.persisted? ? nil : 'Save this draft first to run tests')
+        button 'Evaluate',
+               type: 'button',
+               id: 'prompt-flow-evaluate-open',
+               class: 'button',
+               title: (flow.persisted? ? nil : 'Save this draft first to run evaluate')
       end
 
       div id: 'prompt-flow-canvas',
@@ -257,10 +516,25 @@ ActiveAdmin.register PromptFlow do
             flow_id: flow.persisted? ? flow.id : nil,
             nodes: nodes_json,
             edges: edges_json,
-            prompts: prompts_json
+            prompts: prompts_json,
+            test_execute_url: flow.persisted? ? test_execute_admin_prompt_flow_path(flow) : nil
           },
           style: 'height: 600px; border: 1px solid #e5e7eb; position: relative;' do
         span 'Canvas will render here once jsPlumb is initialized.', class: 'text-gray-500'
+      end
+
+      div id: 'prompt-flow-test-modal',
+          style: 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:9999; align-items:center; justify-content:center;' do
+        div style: 'background:#0b0f1a; border:1px solid #1f2937; border-radius:8px; width:min(760px,92vw); max-height:88vh; overflow:auto; padding:16px;' do
+          h3 'Evaluate Flow', style: 'margin:0 0 12px 0; color:#e5e7eb; font-size:16px;'
+          div id: 'prompt-flow-test-inputs', style: 'display:grid; gap:8px; margin-bottom:12px;'
+          div style: 'display:flex; gap:8px; margin-bottom:12px;' do
+            button 'Run Evaluate', type: 'button', id: 'prompt-flow-test-run', class: 'button'
+            button 'Close', type: 'button', id: 'prompt-flow-test-close', class: 'button'
+          end
+          div id: 'prompt-flow-test-result', style: 'background:#111827; border:1px solid #374151; border-radius:6px; padding:10px; color:#e5e7eb; white-space:pre-wrap;'
+            text_node 'Run a test to view status, outputs, and timeline.'
+        end
       end
 
       script type: 'text/javascript' do
@@ -325,6 +599,9 @@ ActiveAdmin.register PromptFlow do
               var edges = ensureArray(parseDatasetJson(canvas.dataset.edges, []));
               var promptsRaw = parseDatasetJson(canvas.dataset.prompts, []);
               var prompts = Array.isArray(promptsRaw) ? promptsRaw : [];
+              var testExecuteUrl = canvas.dataset.testExecuteUrl || canvas.dataset.test_execute_url;
+              var flowId = canvas.dataset.flowId || canvas.dataset.flow_id;
+              var csrfToken = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content');
               if (!nodes.length) {
                 console.warn('[PromptFlow][show] No nodes parsed for read-only canvas', canvas.dataset.nodes);
               }
@@ -891,6 +1168,217 @@ ActiveAdmin.register PromptFlow do
               var addPromptBtn = document.getElementById('prompt-flow-add-prompt');
               if (addInputBtn) { addInputBtn.addEventListener('click', function() { createNodeFromPalette('input'); }); }
               if (addPromptBtn) { addPromptBtn.addEventListener('click', function() { createNodeFromPalette('prompt'); }); }
+
+              var testModal = document.getElementById('prompt-flow-test-modal');
+              var testSimulateBtn = document.getElementById('prompt-flow-test-simulate');
+              var testEvaluateOpenBtn = document.getElementById('prompt-flow-evaluate-open');
+              var testCloseBtn = document.getElementById('prompt-flow-test-close');
+              var testRunBtn = document.getElementById('prompt-flow-test-run');
+              var testInputsEl = document.getElementById('prompt-flow-test-inputs');
+              var testResultEl = document.getElementById('prompt-flow-test-result');
+
+              function inputKeysFromNodes() {
+                return nodes
+                  .filter(function(node) { return node.node_type === 'input'; })
+                  .map(function(node) {
+                    if (node.config && node.config.param_key) { return node.config.param_key; }
+                    var ports = Object.keys(node.output_ports || {});
+                    return ports[0] || null;
+                  })
+                  .filter(function(key) { return !!key; });
+              }
+
+              function renderTestInputs() {
+                if (!testInputsEl) { return; }
+                testInputsEl.innerHTML = '';
+                var keys = inputKeysFromNodes();
+                if (!keys.length) {
+                  testInputsEl.innerHTML = '<div style=\"color:#9ca3af;\">No input nodes found.</div>';
+                  return;
+                }
+                keys.forEach(function(key) {
+                  var row = document.createElement('div');
+                  row.style.display = 'grid';
+                  row.style.gap = '4px';
+                  row.innerHTML = '<label style=\"color:#cbd5e1; font-size:12px;\">' + key + '</label><input type=\"text\" data-test-input-key=\"' + key + '\" class=\"pf-node__input\" />';
+                  testInputsEl.appendChild(row);
+                });
+              }
+
+              function setInputsVisibility(visible) {
+                if (!testInputsEl) { return; }
+                testInputsEl.style.display = visible ? 'grid' : 'none';
+              }
+
+              function openTestModal(mode) {
+                if (!testModal) { return; }
+                setInputsVisibility(mode === 'evaluate');
+                if (testRunBtn) {
+                  testRunBtn.style.display = (mode === 'evaluate') ? '' : 'none';
+                }
+                testModal.style.display = 'flex';
+              }
+
+              function resolvedTestExecuteUrl() {
+                if (testExecuteUrl) { return testExecuteUrl; }
+                if (flowId) { return '/admin/prompt_flows/' + flowId + '/test_execute'; }
+                return null;
+              }
+
+              function collectTestInputs() {
+                var payload = {};
+                if (!testInputsEl) { return payload; }
+                testInputsEl.querySelectorAll('[data-test-input-key]').forEach(function(input) {
+                  payload[input.getAttribute('data-test-input-key')] = input.value;
+                });
+                return payload;
+              }
+
+              function renderTestResult(data) {
+                if (!testResultEl) { return; }
+                if (!data) {
+                  testResultEl.textContent = 'No result returned.';
+                  return;
+                }
+                if (data.success === false) {
+                  var errors = data.errors || [];
+                  if (!errors.length) {
+                    testResultEl.textContent = 'Validation failed.';
+                    return;
+                  }
+                  var lines = ['Validation failed:'];
+                  errors.forEach(function(error) {
+                    lines.push('- ' + (error.message || 'Unknown error'));
+                  });
+                  testResultEl.textContent = lines.join('\\n');
+                  return;
+                }
+                var result = data.result || {};
+                var executionLog = result.execution_log || [];
+                var totalExecutionMs = null;
+                if (executionLog.length) {
+                  var started = executionLog
+                    .map(function(entry) { return Date.parse(entry.started_at); })
+                    .filter(function(ts) { return !isNaN(ts); });
+                  var ended = executionLog
+                    .map(function(entry) { return Date.parse(entry.ended_at); })
+                    .filter(function(ts) { return !isNaN(ts); });
+                  if (started.length && ended.length) {
+                    totalExecutionMs = Math.max.apply(null, ended) - Math.min.apply(null, started);
+                  }
+                }
+                var lines = [];
+                lines.push('Mode: ' + (data.mode || 'evaluate'));
+                lines.push('Status: ' + (result.status || 'unknown'));
+                if (totalExecutionMs !== null) {
+                  lines.push('Total Execution Time: ' + (totalExecutionMs / 1000).toFixed(2) + 's');
+                }
+                if (result.error_message) { lines.push('Error: ' + result.error_message); }
+                if (result.checks) {
+                  lines.push('Checks: ' + JSON.stringify(result.checks));
+                }
+                if (result.ai_costs) {
+                  lines.push('AI Cost Total: $' + (result.ai_costs.total_cost || 0));
+                  lines.push('AI Logs: ' + (result.ai_costs.log_count || 0));
+                  lines.push('AI Tokens: ' + (result.ai_costs.total_tokens || 0) + ' (' + (result.ai_costs.input_tokens || 0) + ' in / ' + (result.ai_costs.output_tokens || 0) + ' out)');
+                }
+                lines.push('');
+                lines.push('Outputs:');
+                lines.push(JSON.stringify(result.outputs || {}, null, 2));
+                lines.push('');
+                lines.push('Timeline:');
+                lines.push(JSON.stringify(executionLog, null, 2));
+                testResultEl.textContent = lines.join('\\n');
+              }
+
+              if (testEvaluateOpenBtn && testModal) {
+                testEvaluateOpenBtn.addEventListener('click', function() {
+                  openTestModal('evaluate');
+                  renderTestInputs();
+                  testResultEl.textContent = 'Run evaluate to view status, outputs, and timeline.';
+                });
+              }
+
+              if (testCloseBtn && testModal) {
+                testCloseBtn.addEventListener('click', function() {
+                  setInputsVisibility(false);
+                  if (testRunBtn) { testRunBtn.style.display = ''; }
+                  testModal.style.display = 'none';
+                });
+              }
+
+              if (testRunBtn) {
+                testRunBtn.addEventListener('click', function() {
+                  var executeUrl = resolvedTestExecuteUrl();
+                  if (!executeUrl) {
+                    renderTestResult({ success: false, errors: [{ message: 'Save this draft first to run evaluate.' }] });
+                    return;
+                  }
+                  if (testResultEl) {
+                    testResultEl.textContent = 'Running evaluation...';
+                  }
+                  testRunBtn.setAttribute('disabled', 'disabled');
+                  fetch(executeUrl, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({
+                      mode: 'evaluate',
+                      inputs: collectTestInputs(),
+                      graph: serializeGraph()
+                    })
+                  })
+                    .then(function(resp) { return resp.json(); })
+                    .then(function(data) { renderTestResult(data); })
+                    .catch(function(error) {
+                      renderTestResult({ success: false, errors: [{ message: error.message }] });
+                    })
+                    .finally(function() {
+                      testRunBtn.removeAttribute('disabled');
+                    });
+                });
+              }
+
+              if (testSimulateBtn) {
+                testSimulateBtn.addEventListener('click', function() {
+                  openTestModal('simulate');
+                  if (testResultEl) {
+                    testResultEl.textContent = 'Running simulation...';
+                  }
+                  var executeUrl = resolvedTestExecuteUrl();
+                  if (!executeUrl) {
+                    if (testResultEl) {
+                      renderTestResult({ success: false, mode: 'simulate', errors: [{ message: 'Save this draft first to run tests.' }] });
+                    }
+                    return;
+                  }
+
+                  testSimulateBtn.setAttribute('disabled', 'disabled');
+                  fetch(executeUrl, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({
+                      mode: 'simulate',
+                      graph: serializeGraph()
+                    })
+                  })
+                    .then(function(resp) { return resp.json(); })
+                    .then(function(data) {
+                      renderTestResult(data);
+                    })
+                    .catch(function(error) {
+                      renderTestResult({ success: false, mode: 'simulate', errors: [{ message: error.message }] });
+                    })
+                    .finally(function() {
+                      testSimulateBtn.removeAttribute('disabled');
+                    });
+                });
+              }
 
               var form = canvas.closest('form');
               if (form) {

@@ -42,8 +42,8 @@ class PromptFlow < ApplicationRecord
     end
   end
 
-  def sync_graph_to_nodes_and_edges!
-    graph = graph_json || {}
+  def sync_graph_to_nodes_and_edges!(graph_source = graph_json)
+    graph = graph_source || {}
     if graph.is_a?(String)
       begin
         graph = JSON.parse(graph)

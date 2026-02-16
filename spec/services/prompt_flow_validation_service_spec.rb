@@ -77,5 +77,32 @@ RSpec.describe PromptFlowValidationService, type: :service do
 
       expect(errors.map { |e| e[:type] }).to include(:edge_missing_node)
     end
+
+    it 'allows flow control edges for prompt/output nodes without explicit flow ports' do
+      flow = create(:prompt_flow)
+      prompt = create(:prompt)
+      prompt_node = create(:prompt_flow_node,
+                           :prompt_node,
+                           prompt_flow: flow,
+                           prompt: prompt,
+                           input_ports: { 'query' => {} },
+                           output_ports: { 'response' => {} })
+      output_node = create(:prompt_flow_node,
+                           :output_node,
+                           prompt_flow: flow,
+                           input_ports: { 'response' => {} },
+                           output_ports: {})
+
+      create(:prompt_flow_edge,
+             prompt_flow: flow,
+             source_node: prompt_node,
+             target_node: output_node,
+             source_port: 'flow',
+             target_port: 'flow')
+
+      errors = described_class.new(flow).call
+
+      expect(errors.map { |e| e[:type] }).not_to include(:port_missing_on_node)
+    end
   end
 end
