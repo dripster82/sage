@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_14_090030) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_16_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -129,9 +129,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_14_090030) do
     t.bigint "updated_by_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "graph_json", default: {}, null: false
     t.index ["created_by_id"], name: "index_prompt_flows_on_created_by_id"
     t.index ["is_current"], name: "index_prompt_flows_on_is_current"
-    t.index ["name"], name: "index_prompt_flows_on_name", unique: true
+    t.index ["name", "version_number"], name: "index_prompt_flows_on_name_and_version_number", unique: true
     t.index ["status"], name: "index_prompt_flows_on_status"
     t.index ["updated_by_id"], name: "index_prompt_flows_on_updated_by_id"
     t.index ["version_number"], name: "index_prompt_flows_on_version_number"

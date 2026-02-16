@@ -8,6 +8,7 @@ FactoryBot.define do
     version_number { 1 }
     is_current { true }
     max_executions { 20 }
+    graph_json { {} }
 
     association :created_by, factory: :admin_user
     association :updated_by, factory: :admin_user
