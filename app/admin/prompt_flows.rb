@@ -42,6 +42,32 @@ ActiveAdmin.register PromptFlow do
     render json: { success: true }
   end
 
+  member_action :create_node, method: :post do
+    node = resource.nodes.create!(
+      node_type: params[:node_type],
+      prompt_id: params[:prompt_id],
+      position_x: params[:position_x],
+      position_y: params[:position_y],
+      config: params[:config] || {},
+      input_ports: params[:input_ports] || {},
+      output_ports: params[:output_ports] || {}
+    )
+
+    render json: { success: true, node: node.as_json }
+  end
+
+  member_action :update_node, method: :patch do
+    node = resource.nodes.find(params[:node_id])
+    node.update!(
+      prompt_id: params[:prompt_id],
+      config: params[:config] || node.config,
+      input_ports: params[:input_ports] || node.input_ports,
+      output_ports: params[:output_ports] || node.output_ports
+    )
+
+    render json: { success: true, node: node.as_json }
+  end
+
   member_action :create_edge, method: :post do
     edge = resource.edges.create!(
       source_node_id: params[:source_node_id],
@@ -91,8 +117,9 @@ ActiveAdmin.register PromptFlow do
 
   form do |f|
     flow = f.object
-    nodes_json = flow.persisted? ? flow.nodes.as_json(only: %i[id node_type prompt_id position_x position_y input_ports output_ports]) : []
-    edges_json = flow.persisted? ? flow.edges.as_json(only: %i[id source_node_id target_node_id source_port target_port]) : []
+    nodes_json = (flow.persisted? ? flow.nodes.as_json(only: %i[id node_type prompt_id position_x position_y input_ports output_ports]) : []).to_json
+    edges_json = (flow.persisted? ? flow.edges.as_json(only: %i[id source_node_id target_node_id source_port target_port]) : []).to_json
+    prompts_json = Prompt.order(:name).map { |p| { id: p.id, name: p.name, tags: p.tags_list } }.to_json
 
     f.inputs do
       f.input :name
@@ -102,13 +129,106 @@ ActiveAdmin.register PromptFlow do
     end
 
     panel 'Flow Canvas' do
+      div do
+        style do
+          raw <<~CSS
+            .pf-node {
+              background: #0b0f1a;
+              border: 1px solid #1f2937;
+              border-radius: 8px;
+              color: #e5e7eb;
+              min-width: 180px;
+              box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+              font-size: 12px;
+            }
+            .pf-node__header {
+              padding: 6px 10px;
+              border-bottom: 1px solid #1f2937;
+              font-weight: 600;
+              text-transform: capitalize;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            }
+            .pf-node__body {
+              padding: 8px 10px;
+              display: grid;
+              gap: 6px;
+            }
+            .pf-node__inputs {
+              display: grid;
+              gap: 6px;
+            }
+            .pf-node__row {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 6px;
+              color: #cbd5f5;
+            }
+            .pf-node__row span:first-child {
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+            }
+            .pf-node__row span:last-child {
+              display: inline-flex;
+              align-items: center;
+              justify-content: flex-end;
+              min-width: 24px;
+            }
+            .pf-node__row span:first-child {
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+            }
+            .pf-node__row span:last-child {
+              display: inline-flex;
+              align-items: center;
+              justify-content: flex-end;
+              min-width: 24px;
+            }
+            .pf-node__pill {
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+              font-weight: 600;
+              font-size: 11px;
+              letter-spacing: 0.02em;
+              color: #93c5fd;
+            }
+            .pf-node__input {
+              width: 100%;
+              background: #0f172a;
+              color: #f9fafb;
+              border: 1px solid #334155;
+              border-radius: 4px;
+              padding: 4px 6px;
+              font-size: 12px;
+            }
+            .pf-node--start .pf-node__header { color: #93c5fd; }
+            .pf-node--input .pf-node__header { color: #86efac; }
+            .pf-node--output .pf-node__header { color: #fca5a5; }
+            .pf-node--prompt .pf-node__header { color: #fcd34d; }
+          CSS
+        end
+      end
+
+      div class: 'prompt-flow-palette', style: 'display:flex; gap:8px; margin-bottom:12px;' do
+        button 'Add Input', type: 'button', id: 'prompt-flow-add-input', class: 'button'
+        button 'Add Prompt', type: 'button', id: 'prompt-flow-add-prompt', class: 'button'
+      end
+
       div id: 'prompt-flow-canvas',
           data: {
             editable: true,
             flow_id: flow.persisted? ? flow.id : nil,
             nodes: nodes_json,
             edges: edges_json,
+            prompts: prompts_json,
             update_node_url: flow.persisted? ? update_node_position_admin_prompt_flow_path(flow) : nil,
+            create_node_url: flow.persisted? ? create_node_admin_prompt_flow_path(flow) : nil,
+            update_node_url_full: flow.persisted? ? update_node_admin_prompt_flow_path(flow) : nil,
             create_edge_url: flow.persisted? ? create_edge_admin_prompt_flow_path(flow) : nil,
             delete_edge_url: flow.persisted? ? delete_edge_admin_prompt_flow_path(flow) : nil
           },
@@ -157,65 +277,34 @@ ActiveAdmin.register PromptFlow do
               var editable = canvas.dataset.editable === 'true';
               var nodes = JSON.parse(canvas.dataset.nodes || '[]');
               var edges = JSON.parse(canvas.dataset.edges || '[]');
+              var prompts = JSON.parse(canvas.dataset.prompts || '[]');
 
-              if (nodes.length < 2) {
-                nodes = [
-                  {
-                    id: 'demo-left',
-                    node_type: 'input',
-                    position_x: 60,
-                    position_y: 80,
-                    input_ports: { in: {} },
-                    output_ports: { out: {} }
-                  },
-                  {
-                    id: 'demo-right',
-                    node_type: 'output',
-                    position_x: 340,
-                    position_y: 80,
-                    input_ports: { in: {} },
-                    output_ports: { out: {} }
-                  }
-                ];
-                edges = [
-                  {
-                    source_node_id: 'demo-left',
-                    target_node_id: 'demo-right',
-                    source_port: 'out',
-                    target_port: 'in'
-                  }
-                ];
+              if (!nodes.some(function(n) { return n.node_type === 'start'; })) {
+                nodes.push({
+                  id: 'start',
+                  node_type: 'start',
+                  position_x: 40,
+                  position_y: 40,
+                  input_ports: {},
+                  output_ports: { flow: {} }
+                });
               }
 
-              if (nodes.length < 2) {
-                nodes = [
-                  {
-                    id: 'demo-left',
-                    node_type: 'input',
-                    position_x: 60,
-                    position_y: 80,
-                    input_ports: { in: {} },
-                    output_ports: { out: {} }
-                  },
-                  {
-                    id: 'demo-right',
-                    node_type: 'output',
-                    position_x: 340,
-                    position_y: 80,
-                    input_ports: { in: {} },
-                    output_ports: { out: {} }
-                  }
-                ];
-                edges = [
-                  {
-                    source_node_id: 'demo-left',
-                    target_node_id: 'demo-right',
-                    source_port: 'out',
-                    target_port: 'in'
-                  }
-                ];
+              if (!nodes.some(function(n) { return n.node_type === 'output'; })) {
+                nodes.push({
+                  id: 'output',
+                  node_type: 'output',
+                  position_x: 380,
+                  position_y: 40,
+                  input_ports: { response: {} },
+                  output_ports: {}
+                });
               }
+
+
               var updateNodeUrl = canvas.dataset.updateNodeUrl;
+              var createNodeUrl = canvas.dataset.createNodeUrl;
+              var updateNodeFullUrl = canvas.dataset.updateNodeUrlFull;
               var createEdgeUrl = canvas.dataset.createEdgeUrl;
               var deleteEdgeUrl = canvas.dataset.deleteEdgeUrl;
               var csrfToken = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content');
@@ -225,44 +314,73 @@ ActiveAdmin.register PromptFlow do
               function createNodeElement(node) {
                 var el = document.createElement('div');
                 el.id = nodeId(node);
-                el.className = 'prompt-flow-node prompt-flow-node--' + node.node_type;
+                el.className = 'prompt-flow-node pf-node pf-node--' + node.node_type;
                 el.dataset.nodeId = node.id;
                 el.style.position = 'absolute';
                 el.style.left = (node.position_x || 40) + 'px';
                 el.style.top = (node.position_y || 40) + 'px';
-                el.style.minWidth = '140px';
-                el.style.padding = '8px';
-                el.style.border = '1px solid #d1d5db';
-                el.style.borderRadius = '6px';
-                el.style.background = '#fff';
-                el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.06)';
+                var leftFlow = (node.node_type === 'start' || node.node_type === 'prompt' || node.node_type === 'output') ? '&gt;' : '';
+                var rightFlow = (node.node_type === 'start' || node.node_type === 'prompt' || node.node_type === 'input') ? '&gt;' : '';
+                var titleHtml = '<div class=\"pf-node__header\"><span>' + node.node_type + '</span><span></span></div>';
+                var bodyHtml = '<div class=\"pf-node__body\">';
+
                 if (node.node_type === 'input') {
-                  el.style.borderColor = '#15803d';
-                  el.style.background = '#86efac';
+                  var value = (node.config && node.config.param_key) ? node.config.param_key : '';
+                  bodyHtml += '<div><input class=\"prompt-flow-node__param pf-node__input\" data-node-id=\"' + node.id + '\" placeholder=\"param key\" value=\"' + value + '\" /></div>';
                 }
+
+                if (node.node_type === 'prompt') {
+                  var options = prompts.map(function(p) {
+                    var selected = node.prompt_id === p.id ? 'selected' : '';
+                    return '<option value=\"' + p.id + '\" ' + selected + '>' + p.name + '</option>';
+                  }).join('');
+                  bodyHtml += '<div><select class=\"prompt-flow-node__prompt pf-node__input\" data-node-id=\"' + node.id + '\">' + options + '</select></div>';
+                  bodyHtml += '<div class=\"pf-node__row\"><span>Response</span><span></span></div>';
+                  bodyHtml += '<div class=\"pf-node__inputs\">';
+                  Object.keys(node.input_ports || {}).forEach(function(port) {
+                    bodyHtml += '<div class=\"pf-node__row\"><span>' + port + '</span><span></span></div>';
+                  });
+                  bodyHtml += '</div>';
+                }
+
                 if (node.node_type === 'output') {
-                  el.style.borderColor = '#b91c1c';
-                  el.style.background = '#fca5a5';
+                  bodyHtml += '<div class=\"pf-node__row\"><span>Response</span><span></span></div>';
                 }
-                el.innerHTML = '<div class=\"prompt-flow-node__title\">' + node.node_type + '</div>';
+
+                bodyHtml += '</div>';
+                el.innerHTML = titleHtml + bodyHtml;
                 canvas.appendChild(el);
                 return el;
               }
 
-              var sourceEndpoint = {
+              var flowOutEndpoint = {
                 endpoint: tk.DotEndpoint.type,
-                paintStyle: { stroke: '#7AB02C', fill: 'transparent', radius: 6, strokeWidth: 1 },
+                paintStyle: { stroke: '#ffffff', fill: '#ffffff', radius: 8, strokeWidth: 2 },
                 source: true,
-                maxConnections: -1,
+                maxConnections: 1,
                 connector: {
                   type: 'Flowchart',
                   options: { stub: [40, 60], gap: 10, cornerRadius: 5, alwaysRespectStubs: true }
                 }
               };
 
-              var targetEndpoint = {
+              var flowInEndpoint = {
                 endpoint: tk.DotEndpoint.type,
-                paintStyle: { fill: '#7AB02C', radius: 6 },
+                paintStyle: { stroke: '#ffffff', fill: 'transparent', radius: 8, strokeWidth: 2 },
+                target: true,
+                maxConnections: -1
+              };
+
+              var varOutEndpoint = {
+                endpoint: tk.DotEndpoint.type,
+                paintStyle: { stroke: '#16a34a', fill: '#16a34a', radius: 6, strokeWidth: 1 },
+                source: true,
+                maxConnections: -1
+              };
+
+              var varInEndpoint = {
+                endpoint: tk.DotEndpoint.type,
+                paintStyle: { stroke: '#16a34a', fill: '#16a34a', radius: 6, strokeWidth: 1 },
                 target: true,
                 maxConnections: 1
               };
@@ -270,20 +388,80 @@ ActiveAdmin.register PromptFlow do
               function addPorts(node, el) {
                 var inputPorts = Object.keys(node.input_ports || {});
                 var outputPorts = Object.keys(node.output_ports || {});
+                var rowHeight = 26;
+                var flowBaseOffset = 15;
+                var varBaseOffsetDefault = flowBaseOffset + 35;
+                var varBaseOffsetInput = flowBaseOffset + 40;
+                var varBaseOffsetPrompt = flowBaseOffset + 71;
 
-                inputPorts.forEach(function(port) {
-                  instance.addEndpoint(el, targetEndpoint, {
-                    anchor: tk.AnchorLocations.Left,
-                    uuid: node.id + '-in-' + port
-                  });
-                });
+                function leftAnchorAt(row, baseOffset) {
+                  return [0, 0, -1, 0, 0, baseOffset + row * rowHeight];
+                }
 
-                outputPorts.forEach(function(port) {
-                  instance.addEndpoint(el, sourceEndpoint, {
-                    anchor: tk.AnchorLocations.Right,
-                    uuid: node.id + '-out-' + port
+                function rightAnchorAt(row, baseOffset) {
+                  return [1, 0, 1, 0, 0, baseOffset + row * rowHeight];
+                }
+
+                if (node.node_type === 'start') {
+                  instance.addEndpoint(el, flowOutEndpoint, {
+                    anchor: rightAnchorAt(0, flowBaseOffset),
+                    uuid: node.id + '-flow-out',
+                    parameters: { portType: 'flow_out', portKey: 'flow' }
                   });
-                });
+                  return;
+                }
+
+                if (node.node_type === 'output') {
+                  instance.addEndpoint(el, flowInEndpoint, {
+                    anchor: leftAnchorAt(0, flowBaseOffset),
+                    uuid: node.id + '-flow-in',
+                    parameters: { portType: 'flow_in', portKey: 'flow' }
+                  });
+                  instance.addEndpoint(el, varInEndpoint, {
+                    anchor: leftAnchorAt(0, varBaseOffsetDefault),
+                    uuid: node.id + '-in-response',
+                    parameters: { portType: 'var_in', portKey: 'response' }
+                  });
+                  return;
+                }
+
+                if (node.node_type === 'input') {                
+                  outputPorts.forEach(function(port) {
+                    instance.addEndpoint(el, varOutEndpoint, {
+                      anchor: rightAnchorAt(0, varBaseOffsetInput),
+                      uuid: node.id + '-out-' + port,
+                      parameters: { portType: 'var_out', portKey: port }
+                    });
+                  });
+                  return;
+                }
+
+                if (node.node_type === 'prompt') {
+                  instance.addEndpoint(el, flowInEndpoint, {
+                    anchor: leftAnchorAt(0, flowBaseOffset),
+                    uuid: node.id + '-flow-in',
+                    parameters: { portType: 'flow_in', portKey: 'flow' }
+                  });
+                  instance.addEndpoint(el, flowOutEndpoint, {
+                    anchor: rightAnchorAt(0, flowBaseOffset),
+                    uuid: node.id + '-flow-out',
+                    parameters: { portType: 'flow_out', portKey: 'flow' }
+                  });
+
+                  instance.addEndpoint(el, varOutEndpoint, {
+                    anchor: rightAnchorAt(0, varBaseOffsetPrompt),
+                    uuid: node.id + '-out-response',
+                    parameters: { portType: 'var_out', portKey: 'response' }
+                  });
+
+                  inputPorts.forEach(function(port, index) {
+                    instance.addEndpoint(el, varInEndpoint, {
+                      anchor: leftAnchorAt(index + 1, varBaseOffsetPrompt),
+                      uuid: node.id + '-in-' + port,
+                      parameters: { portType: 'var_in', portKey: port }
+                    });
+                  });
+                }
               }
 
               function persistNodePosition(nodeEl) {
@@ -309,7 +487,10 @@ ActiveAdmin.register PromptFlow do
 
                 var sourcePort = info.sourceEndpoint.getParameter('portType');
                 var targetPort = info.targetEndpoint.getParameter('portType');
-                if (sourcePort !== 'output' || targetPort !== 'input') { return false; }
+                if (!sourcePort || !targetPort) { return false; }
+                var validFlow = sourcePort === 'flow_out' && targetPort === 'flow_in';
+                var validVar = sourcePort === 'var_out' && targetPort === 'var_in';
+                if (!validFlow && !validVar) { return false; }
                 if (info.sourceId === info.targetId) { return false; }
 
                 var sourceKey = info.sourceEndpoint.getParameter('portKey');
@@ -371,6 +552,86 @@ ActiveAdmin.register PromptFlow do
                 });
               });
 
+              function updatePromptPorts(node, el, promptId, promptName) {
+                console.log('[PromptFlow] updatePromptPorts start', { nodeId: node && node.id, promptId: promptId, promptName: promptName });
+                var prompt = prompts.find(function(p) { return p.id == promptId; });
+                if (!prompt && promptName) {
+                  prompt = prompts.find(function(p) { return p.name === promptName; });
+                }
+                console.log('[PromptFlow] resolved prompt', prompt);
+                var tags = prompt && prompt.tags ? prompt.tags : [];
+                console.log('[PromptFlow] tags', tags);
+                node.prompt_id = promptId;
+                node.input_ports = tags.reduce(function(acc, tag) {
+                  acc[tag] = {};
+                  return acc;
+                }, {});
+                node.output_ports = { response: {} };
+
+                console.log('[PromptFlow] removing endpoints', el);
+                instance.removeAllEndpoints(el);
+                console.log('[PromptFlow] adding ports');
+                addPorts(node, el);
+
+                var inputsEl = el.querySelector('.pf-node__inputs');
+                if (!inputsEl) {
+                  inputsEl = document.createElement('div');
+                  inputsEl.className = 'pf-node__inputs';
+                  el.querySelector('.pf-node__body')?.appendChild(inputsEl);
+                }
+
+                console.log('[PromptFlow] rebuilding inputs list');
+                inputsEl.innerHTML = '';
+                Object.keys(node.input_ports || {}).forEach(function(port) {
+                  var row = document.createElement('div');
+                  row.className = 'pf-node__row';
+                  row.innerHTML = '<span>' + port + '</span><span></span>';
+                  inputsEl.appendChild(row);
+                });
+
+                if (editable && updateNodeFullUrl) {
+                  console.log('[PromptFlow] persisting prompt ports');
+                  fetch(updateNodeFullUrl, {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({
+                      node_id: node.id,
+                      prompt_id: node.prompt_id,
+                      input_ports: node.input_ports,
+                      output_ports: node.output_ports
+                    })
+                  });
+                }
+              }
+
+              function updateInputParam(node, el, value) {
+                node.config = node.config || {};
+                node.config.param_key = value;
+                node.output_ports = {};
+                if (value) { node.output_ports[value] = {}; }
+
+                instance.removeAllEndpoints(el);
+                addPorts(node, el);
+
+                if (editable && updateNodeFullUrl) {
+                  fetch(updateNodeFullUrl, {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({
+                      node_id: node.id,
+                      config: node.config,
+                      output_ports: node.output_ports
+                    })
+                  });
+                }
+              }
+
               function enableDrag(el) {
                 if (typeof instance.draggable === 'function') {
                   instance.draggable(el, {
@@ -387,6 +648,25 @@ ActiveAdmin.register PromptFlow do
                   var el = createNodeElement(node);
                   addPorts(node, el);
                   if (editable) { instance.manage(el); }
+                  if (node.node_type === 'prompt') {
+                    var select = el.querySelector('.prompt-flow-node__prompt');
+                    if (select) {
+                      select.addEventListener('change', function(event) {
+                        var value = parseInt(event.target.value, 10);
+                        var name = event.target.options[event.target.selectedIndex]?.text || null;
+                        console.log('[PromptFlow] select change (direct listener)', { nodeId: node.id, value: value, name: name });
+                        updatePromptPorts(node, el, value, name);
+                      });
+                    }
+                  }
+                  if (node.node_type === 'input') {
+                    var input = el.querySelector('.prompt-flow-node__param');
+                    if (input) {
+                      input.addEventListener('change', function(event) {
+                        updateInputParam(node, el, event.target.value.trim());
+                      });
+                    }
+                  }
                 });
 
                 edges.forEach(function(edge) {
@@ -399,22 +679,107 @@ ActiveAdmin.register PromptFlow do
                 });
               });
 
-              if (!document.getElementById('prompt-flow-node-demo-right')) {
-                var fallbackEl = document.createElement('div');
-                fallbackEl.id = 'prompt-flow-node-demo-right';
-                fallbackEl.className = 'prompt-flow-node prompt-flow-node--output';
-                fallbackEl.style.position = 'absolute';
-                fallbackEl.style.left = '340px';
-                fallbackEl.style.top = '80px';
-                fallbackEl.style.minWidth = '140px';
-                fallbackEl.style.padding = '8px';
-                fallbackEl.style.border = '1px solid #b91c1c';
-                fallbackEl.style.borderRadius = '6px';
-                fallbackEl.style.background = '#fca5a5';
-                fallbackEl.style.boxShadow = '0 1px 2px rgba(0,0,0,0.06)';
-                fallbackEl.innerHTML = '<div class=\"prompt-flow-node__title\">output</div>';
-                canvas.appendChild(fallbackEl);
+              // Removed fallback node injection; only render actual nodes.
+
+              function createNodeFromPalette(type) {
+                var node = {
+                  id: 'temp-' + Date.now(),
+                  node_type: type,
+                  position_x: 80,
+                  position_y: 120,
+                  input_ports: {},
+                  output_ports: {},
+                  config: {}
+                };
+
+                if (type === 'input') {
+                  node.output_ports = { param: {} };
+                  node.config.param_key = 'param';
+                } else if (type === 'output') {
+                  node.input_ports = { in: {} };
+                } else if (type === 'prompt') {
+                  var firstPrompt = prompts[0];
+                  node.prompt_id = firstPrompt ? firstPrompt.id : null;
+                  var tags = firstPrompt ? firstPrompt.tags : [];
+                  node.input_ports = tags.reduce(function(acc, tag) {
+                    acc[tag] = {};
+                    return acc;
+                  }, {});
+                  node.output_ports = { response: {} };
+                }
+
+                if (!nodes.some(function(n) { return n.id == node.id; })) {
+                  nodes.push(node);
+                }
+
+                if (editable && createNodeUrl) {
+                  fetch(createNodeUrl, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({
+                      node_type: node.node_type,
+                      prompt_id: node.prompt_id,
+                      position_x: node.position_x,
+                      position_y: node.position_y,
+                      config: node.config,
+                      input_ports: node.input_ports,
+                      output_ports: node.output_ports
+                    })
+                  }).then(function(resp) { return resp.json(); }).then(function(data) {
+                    if (!data || !data.node) { return; }
+                    node.id = data.node.id;
+                    var el = createNodeElement(node);
+                    addPorts(node, el);
+                    instance.manage(el);
+                    if (node.node_type === 'prompt') {
+                      var select = el.querySelector('.prompt-flow-node__prompt');
+                      if (select) {
+                        select.addEventListener('change', function(event) {
+                          var value = parseInt(event.target.value, 10);
+                          var name = event.target.options[event.target.selectedIndex]?.text || null;
+                          console.log('[PromptFlow] select change (new node)', { nodeId: node.id, value: value, name: name });
+                          updatePromptPorts(node, el, value, name);
+                        });
+                      }
+                    }
+                    if (node.node_type === 'input') {
+                      var input = el.querySelector('.prompt-flow-node__param');
+                      if (input) {
+                        input.addEventListener('change', function(event) {
+                          updateInputParam(node, el, event.target.value.trim());
+                        });
+                      }
+                    }
+                  });
+                } else {
+                  var el = createNodeElement(node);
+                  addPorts(node, el);
+                  instance.manage(el);
+                }
               }
+
+              var addInputBtn = document.getElementById('prompt-flow-add-input');
+              var addPromptBtn = document.getElementById('prompt-flow-add-prompt');
+              if (addInputBtn) { addInputBtn.addEventListener('click', function() { createNodeFromPalette('input'); }); }
+              if (addPromptBtn) { addPromptBtn.addEventListener('click', function() { createNodeFromPalette('prompt'); }); }
+
+              canvas.addEventListener('change', function(event) {
+                var select = event.target.closest('.prompt-flow-node__prompt');
+                if (!select) { return; }
+                var nodeIdValue = select.getAttribute('data-node-id');
+                var node = nodes.find(function(n) { return n.id == nodeIdValue; });
+                if (!node) {
+                  console.log('[PromptFlow] delegated change: node not found', nodeIdValue, nodes);
+                  return;
+                }
+                var value = parseInt(select.value, 10);
+                var name = select.options[select.selectedIndex]?.text || null;
+                console.log('[PromptFlow] select change (delegated)', { nodeId: node.id, value: value, name: name });
+                updatePromptPorts(node, select.closest('.prompt-flow-node'), value, name);
+              });
             }
 
             loadJsPlumb(function() {
@@ -448,6 +813,55 @@ ActiveAdmin.register PromptFlow do
     end
 
     panel 'Flow Canvas (Read-Only)' do
+      div do
+        style do
+          raw <<~CSS
+            .pf-node {
+              background: #0b0f1a;
+              border: 1px solid #1f2937;
+              border-radius: 8px;
+              color: #e5e7eb;
+              min-width: 180px;
+              box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+              font-size: 12px;
+            }
+            .pf-node__header {
+              padding: 6px 10px;
+              border-bottom: 1px solid #1f2937;
+              font-weight: 600;
+              text-transform: capitalize;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            }
+            .pf-node__body {
+              padding: 8px 10px;
+              display: grid;
+              gap: 6px;
+            }
+            .pf-node__row {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 8px;
+              color: #cbd5f5;
+            }
+            .pf-node__pill {
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+              font-weight: 600;
+              font-size: 11px;
+              letter-spacing: 0.02em;
+              color: #93c5fd;
+            }
+            .pf-node--start .pf-node__header { color: #93c5fd; }
+            .pf-node--input .pf-node__header { color: #86efac; }
+            .pf-node--output .pf-node__header { color: #fca5a5; }
+            .pf-node--prompt .pf-node__header { color: #fcd34d; }
+          CSS
+        end
+      end
       div id: 'prompt-flow-canvas',
           data: {
             editable: false,
@@ -505,26 +919,28 @@ ActiveAdmin.register PromptFlow do
               function createNodeElement(node) {
                 var el = document.createElement('div');
                 el.id = nodeId(node);
-                el.className = 'prompt-flow-node prompt-flow-node--' + node.node_type;
+                el.className = 'prompt-flow-node pf-node pf-node--' + node.node_type;
                 el.dataset.nodeId = node.id;
                 el.style.position = 'absolute';
                 el.style.left = (node.position_x || 40) + 'px';
                 el.style.top = (node.position_y || 40) + 'px';
-                el.style.minWidth = '140px';
-                el.style.padding = '8px';
-                el.style.border = '1px solid #d1d5db';
-                el.style.borderRadius = '6px';
-                el.style.background = '#fff';
-                el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.06)';
-                if (node.node_type === 'input') {
-                  el.style.borderColor = '#15803d';
-                  el.style.background = '#86efac';
+
+                var titleHtml = '<div class=\"pf-node__header\"><span>' + node.node_type + '</span><span></span></div>';
+                var bodyHtml = '<div class=\"pf-node__body\">';
+
+                if (node.node_type === 'prompt') {
+                  bodyHtml += '<div class=\"pf-node__row\"><span>Response</span><span></span></div>';
+                  Object.keys(node.input_ports || {}).forEach(function(port) {
+                    bodyHtml += '<div class=\"pf-node__row\"><span>' + port + '</span><span></span></div>';
+                  });
                 }
+
                 if (node.node_type === 'output') {
-                  el.style.borderColor = '#b91c1c';
-                  el.style.background = '#fca5a5';
+                  bodyHtml += '<div class=\"pf-node__row\"><span>response</span><span></span></div>';
                 }
-                el.innerHTML = '<div class=\"prompt-flow-node__title\">' + node.node_type + '</div>';
+
+                bodyHtml += '</div>';
+                el.innerHTML = titleHtml + bodyHtml;
                 canvas.appendChild(el);
                 return el;
               }
@@ -533,7 +949,7 @@ ActiveAdmin.register PromptFlow do
                 endpoint: tk.DotEndpoint.type,
                 paintStyle: { stroke: '#7AB02C', fill: 'transparent', radius: 6, strokeWidth: 1 },
                 source: true,
-                maxConnections: -1,
+                maxConnections: 1,
                 connector: {
                   type: 'Flowchart',
                   options: { stub: [40, 60], gap: 10, cornerRadius: 5, alwaysRespectStubs: true }
@@ -544,26 +960,79 @@ ActiveAdmin.register PromptFlow do
                 endpoint: tk.DotEndpoint.type,
                 paintStyle: { fill: '#7AB02C', radius: 6 },
                 target: true,
-                maxConnections: 1
+                maxConnections: -1
               };
 
               function addPorts(node, el) {
                 var inputPorts = Object.keys(node.input_ports || {});
                 var outputPorts = Object.keys(node.output_ports || {});
+                var rowHeight = 26;
+                var flowBaseOffset = 15;
+                var varBaseOffsetDefault = flowBaseOffset + 35;
+                var varBaseOffsetPrompt = flowBaseOffset + 53;
 
-                inputPorts.forEach(function(port) {
-                  instance.addEndpoint(el, targetEndpoint, {
-                    anchor: tk.AnchorLocations.Left,
-                    uuid: node.id + '-in-' + port
-                  });
-                });
+                function leftAnchorAt(row, baseOffset) {
+                  return [0, 0, -1, 0, 0, baseOffset + row * rowHeight];
+                }
 
-                outputPorts.forEach(function(port) {
+                function rightAnchorAt(row, baseOffset) {
+                  return [1, 0, 1, 0, 0, baseOffset + row * rowHeight];
+                }
+
+                if (node.node_type === 'start') {
                   instance.addEndpoint(el, sourceEndpoint, {
-                    anchor: tk.AnchorLocations.Right,
-                    uuid: node.id + '-out-' + port
+                    anchor: rightAnchorAt(0, flowBaseOffset),
+                    uuid: node.id + '-flow-out'
                   });
-                });
+                  return;
+                }
+
+                if (node.node_type === 'output') {
+                  instance.addEndpoint(el, targetEndpoint, {
+                    anchor: leftAnchorAt(0, flowBaseOffset),
+                    uuid: node.id + '-flow-in'
+                  });
+                  instance.addEndpoint(el, targetEndpoint, {
+                    anchor: leftAnchorAt(0, varBaseOffsetDefault),
+                    uuid: node.id + '-in-response'
+                  });
+                  return;
+                }
+
+                if (node.node_type === 'input') {
+                  instance.addEndpoint(el, sourceEndpoint, {
+                    anchor: rightAnchorAt(0, flowBaseOffset),
+                    uuid: node.id + '-flow-out'
+                  });
+                  outputPorts.forEach(function(port) {
+                    instance.addEndpoint(el, sourceEndpoint, {
+                      anchor: rightAnchorAt(0, varBaseOffsetDefault),
+                      uuid: node.id + '-out-' + port
+                    });
+                  });
+                  return;
+                }
+
+                if (node.node_type === 'prompt') {
+                  instance.addEndpoint(el, targetEndpoint, {
+                    anchor: leftAnchorAt(0, flowBaseOffset),
+                    uuid: node.id + '-flow-in'
+                  });
+                  instance.addEndpoint(el, sourceEndpoint, {
+                    anchor: rightAnchorAt(0, flowBaseOffset),
+                    uuid: node.id + '-flow-out'
+                  });
+                  instance.addEndpoint(el, sourceEndpoint, {
+                    anchor: rightAnchorAt(0, varBaseOffsetPrompt),
+                    uuid: node.id + '-out-response'
+                  });
+                  inputPorts.forEach(function(port, index) {
+                    instance.addEndpoint(el, targetEndpoint, {
+                      anchor: leftAnchorAt(index, varBaseOffsetPrompt),
+                      uuid: node.id + '-in-' + port
+                    });
+                  });
+                }
               }
 
               instance.batch(function() {
@@ -580,22 +1049,7 @@ ActiveAdmin.register PromptFlow do
                 });
               });
 
-              if (!document.getElementById('prompt-flow-node-demo-right')) {
-                var fallbackEl = document.createElement('div');
-                fallbackEl.id = 'prompt-flow-node-demo-right';
-                fallbackEl.className = 'prompt-flow-node prompt-flow-node--output';
-                fallbackEl.style.position = 'absolute';
-                fallbackEl.style.left = '340px';
-                fallbackEl.style.top = '80px';
-                fallbackEl.style.minWidth = '140px';
-                fallbackEl.style.padding = '8px';
-                fallbackEl.style.border = '1px solid #b91c1c';
-                fallbackEl.style.borderRadius = '6px';
-                fallbackEl.style.background = '#fca5a5';
-                fallbackEl.style.boxShadow = '0 1px 2px rgba(0,0,0,0.06)';
-                fallbackEl.innerHTML = '<div class=\"prompt-flow-node__title\">output</div>';
-                canvas.appendChild(fallbackEl);
-              }
+              // Removed fallback node injection; only render actual nodes.
             }
 
             loadJsPlumb(function() {
