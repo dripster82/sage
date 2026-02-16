@@ -44,8 +44,18 @@ class PromptFlow < ApplicationRecord
 
   def sync_graph_to_nodes_and_edges!
     graph = graph_json || {}
+    if graph.is_a?(String)
+      begin
+        graph = JSON.parse(graph)
+      rescue JSON::ParserError
+        graph = {}
+      end
+    end
+
     nodes_data = graph['nodes'] || graph[:nodes] || []
     edges_data = graph['edges'] || graph[:edges] || []
+    nodes_data = [] unless nodes_data.is_a?(Array)
+    edges_data = [] unless edges_data.is_a?(Array)
 
     transaction do
       edges.destroy_all

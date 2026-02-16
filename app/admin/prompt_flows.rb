@@ -3,11 +3,28 @@
 ActiveAdmin.register PromptFlow do
   menu parent: 'Ai Admin'
 
-  permit_params :name, :description, :status, :max_executions, :graph_json
+  permit_params :name, :description, :max_executions, :graph_json
 
   config.batch_actions = false
 
   controller do
+    def scoped_collection
+      base = super
+      return base unless action_name == 'index'
+
+      ranked = base.select(
+        <<~SQL.squish
+          prompt_flows.*,
+          ROW_NUMBER() OVER (
+            PARTITION BY prompt_flows.name
+            ORDER BY prompt_flows.is_current DESC, prompt_flows.version_number DESC, prompt_flows.id DESC
+          ) AS flow_rank
+        SQL
+      )
+
+      PromptFlow.from("(#{ranked.to_sql}) prompt_flows").where('flow_rank = 1')
+    end
+
     def create
       @prompt_flow = PromptFlow.new(permitted_params[:prompt_flow])
       @prompt_flow.is_current = false
@@ -36,8 +53,17 @@ ActiveAdmin.register PromptFlow do
     def edit
       flow = resource
       if flow.is_current?
-        draft = flow.duplicate_as_draft!(current_admin_user)
-        redirect_to edit_admin_prompt_flow_path(draft), notice: 'Created a draft version for editing.'
+        existing_draft = PromptFlow.for_name(flow.name)
+                                   .where(is_current: false, status: 'draft')
+                                   .where('version_number > ?', flow.version_number)
+                                   .order(version_number: :desc)
+                                   .first
+        if existing_draft
+          redirect_to edit_admin_prompt_flow_path(existing_draft), notice: 'Opened existing draft version.'
+        else
+          draft = flow.duplicate_as_draft!(current_admin_user)
+          redirect_to edit_admin_prompt_flow_path(draft), notice: 'Created a draft version for editing.'
+        end
       else
         super
       end
@@ -50,9 +76,20 @@ ActiveAdmin.register PromptFlow do
       PromptFlow.for_name(flow.name).where(is_current: true).where.not(id: flow.id).update_all(is_current: false)
       flow.update!(is_current: true, updated_by: current_admin_user)
       flow.sync_graph_to_nodes_and_edges!
+
+      # Keep node/edge tables populated only for the active version.
+      PromptFlow.for_name(flow.name).where.not(id: flow.id).find_each do |other_version|
+        other_version.edges.delete_all
+        other_version.nodes.delete_all
+      end
     end
 
     redirect_to admin_prompt_flow_path(flow), notice: 'Prompt flow activated.'
+  end
+
+  member_action :duplicate, method: :post do
+    draft = resource.duplicate_as_draft!(current_admin_user)
+    redirect_to edit_admin_prompt_flow_path(draft), notice: 'Draft duplicated from selected version.'
   end
 
   action_item :activate, only: :show, if: proc { !resource.is_current? } do
@@ -66,7 +103,14 @@ ActiveAdmin.register PromptFlow do
     id_column
     column :name
     column :status do |flow|
-      status_tag flow.status
+      display_status = if flow.is_current?
+                         'active'
+                       elsif flow.status == 'invalid'
+                         'invalid'
+                       else
+                         'draft'
+                       end
+      status_tag display_status
     end
     column :version_number
     column :max_executions
@@ -75,7 +119,7 @@ ActiveAdmin.register PromptFlow do
   end
 
   filter :name
-  filter :status, as: :select, collection: %w[draft valid invalid]
+  filter :status, as: :select, collection: %w[draft invalid]
   filter :is_current
   filter :updated_at
 
@@ -183,9 +227,14 @@ ActiveAdmin.register PromptFlow do
     prompts_json = Prompt.order(:name).map { |p| { id: p.id, name: p.name, tags: p.tags_list } }.to_json
 
     f.inputs do
+      if flow.persisted?
+        li class: 'input stringish' do
+          label 'Version', class: 'label'
+          span flow.version_number.to_s
+        end
+      end
       f.input :name
       f.input :description, as: :string
-      f.input :status, as: :select, collection: %w[draft valid invalid]
       f.input :max_executions
       f.input :graph_json, as: :hidden
     end
@@ -902,7 +951,14 @@ ActiveAdmin.register PromptFlow do
       row :name
       row :description
       row :status do |flow|
-        status_tag flow.status
+        display_status = if flow.is_current?
+                           'active'
+                         elsif flow.status == 'invalid'
+                           'invalid'
+                         else
+                           'draft'
+                         end
+        status_tag display_status
       end
       row :version_number
       row :max_executions
@@ -1195,15 +1251,42 @@ ActiveAdmin.register PromptFlow do
       table_for resource.versions do
         column :version_number do |flow|
           if flow.is_current?
-            strong "#{flow.version_number} (Active)"
+            strong flow.version_number
           else
             flow.version_number
           end
         end
-        column :status
+        column :status do |flow|
+          display_status = if flow.is_current?
+                             'active'
+                           elsif flow.status == 'invalid'
+                             'invalid'
+                           else
+                             'draft'
+                           end
+          status_tag display_status
+        end
         column :created_at
         column :updated_at
-        column('Actions') { |flow| link_to 'View', admin_prompt_flow_path(flow) }
+        column('Actions') do |flow|
+          links = []
+          links << link_to('View', admin_prompt_flow_path(flow))
+          links << link_to(
+            'Duplicate',
+            duplicate_admin_prompt_flow_path(flow),
+            method: :post,
+            data: { confirm: 'Create a new draft from this version?' }
+          )
+          unless flow.is_current?
+            links << link_to(
+              'Activate',
+              activate_admin_prompt_flow_path(flow),
+              method: :patch,
+              data: { confirm: 'Set this version as the active prompt flow?' }
+            )
+          end
+          safe_join(links, ' | ')
+        end
       end
     end
   end
