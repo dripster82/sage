@@ -44,7 +44,11 @@ RSpec.describe 'Application Routes', type: :request do
     context 'when authenticated' do
       let(:admin_user) { create(:admin_user) }
 
-      before { sign_in admin_user }
+      before do
+        sign_in admin_user, scope: :admin_user
+        # Mock the OpenRouter service to avoid real API calls
+        allow(OpenrouterService).to receive(:credits).and_return(100.0)
+      end
 
       it 'allows access to admin panel' do
         get admin_path, headers: { 'Host' => 'localhost' }

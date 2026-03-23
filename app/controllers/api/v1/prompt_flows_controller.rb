@@ -64,7 +64,8 @@ module Api
           :status,
           :version_number,
           :is_current,
-          :max_executions
+          :max_executions,
+          :credits
         )
       end
 

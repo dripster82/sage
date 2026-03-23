@@ -3,7 +3,7 @@
 ActiveAdmin.register PromptFlow do
   menu parent: 'Ai Admin'
 
-  permit_params :name, :description, :max_executions, :graph_json
+  permit_params :name, :description, :max_executions, :credits, :graph_json
 
   config.batch_actions = false
 
@@ -363,6 +363,7 @@ ActiveAdmin.register PromptFlow do
     end
     column :version_number
     column :max_executions
+    column :credits
     column :updated_at
     actions
   end
@@ -485,6 +486,7 @@ ActiveAdmin.register PromptFlow do
       f.input :name
       f.input :description, as: :string
       f.input :max_executions
+      f.input :credits
       f.input :graph_json, as: :hidden
     end
 
@@ -1450,6 +1452,7 @@ ActiveAdmin.register PromptFlow do
       end
       row :version_number
       row :max_executions
+      row :credits
       row :created_by
       row :updated_by
       row :created_at

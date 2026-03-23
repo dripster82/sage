@@ -15,6 +15,7 @@ class PromptFlow < ApplicationRecord
   validates :version_number, numericality: { greater_than: 0 }
   validates :version_number, uniqueness: { scope: :name }
   validates :max_executions, numericality: { greater_than: 0 }
+  validates :credits, numericality: { greater_than: 0 }
 
   scope :for_name, ->(name) { where(name: name) }
   scope :current, -> { where(is_current: true) }

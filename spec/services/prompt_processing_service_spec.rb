@@ -41,6 +41,9 @@ RSpec.describe PromptProcessingService, type: :service do
       end
 
       it 'passes temperature and model to LLM service' do
+        # Create an allowed model so it doesn't fall back
+        create(:allowed_model, model: 'test-model', active: true)
+
         service_with_options = PromptProcessingService.new(temperature: 0.5, model: 'test-model')
 
         expect(Llm::QueryService).to receive(:new).with(temperature: 0.5, model: 'test-model')
@@ -53,7 +56,7 @@ RSpec.describe PromptProcessingService, type: :service do
       end
 
       it 'passes chat_id to LLM service' do
-        expect(mock_llm_service).to receive(:ask).with(anything, chat_id: 'test-chat-id')
+        expect(mock_llm_service).to receive(:ask).with(anything, chat_id: 'test-chat-id', prompt_key: 'test_prompt')
 
         service.process_and_query(
           prompt_key: 'test_prompt',
@@ -100,13 +103,15 @@ RSpec.describe PromptProcessingService, type: :service do
   end
 
   describe 'parameter validation' do
-    it 'raises error for missing query' do
+    it 'allows query to be missing (query is optional with prompt templates)' do
+      allow(Prompt).to receive(:find_by).with(name: 'test_prompt').and_return(prompt)
+
       expect {
         service.process_and_query(
           prompt_key: 'test_prompt',
           parameters: {}
         )
-      }.to raise_error(PromptProcessingService::MissingParameterError, 'Query is required')
+      }.not_to raise_error
     end
 
     it 'raises error for missing prompt_key' do

@@ -21,6 +21,7 @@ RSpec.describe PromptFlow, type: :model do
     it { should validate_numericality_of(:version_number).is_greater_than(0) }
     it { should validate_uniqueness_of(:version_number).scoped_to(:name) }
     it { should validate_numericality_of(:max_executions).is_greater_than(0) }
+    it { should validate_numericality_of(:credits).is_greater_than(0) }
 
     it 'is valid with default factory' do
       expect(subject).to be_valid

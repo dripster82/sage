@@ -32,8 +32,9 @@ RSpec.describe Llm::QueryService, type: :service do
     end
 
     it 'accepts custom model' do
+      # When a model is not in AllowedModel, it falls back to the default
       custom_service = Llm::QueryService.new(model: 'custom-model')
-      expect(custom_service.model).to eq('custom-model')
+      expect(custom_service.model).to eq(RubyLLM.config.default_model)
     end
   end
 
@@ -93,6 +94,7 @@ RSpec.describe Llm::QueryService, type: :service do
         model: service.model,
         query: query,
         chat_id: nil,
+        prompt_key: nil,
         session_uuid: nil,
         settings: {
           temperature: 0.7,
@@ -307,6 +309,7 @@ RSpec.describe Llm::QueryService, type: :service do
             model: service.model,
             query: query,
             chat_id: chat_id,
+            prompt_key: nil,
             session_uuid: nil,
             settings: {
               temperature: service.temperature,
@@ -351,11 +354,12 @@ RSpec.describe Llm::QueryService, type: :service do
               response: 'Test',
               input_tokens: 10,
               output_tokens: 5,
-              total_cost: kind_of(Numeric)
+              total_cost: kind_of(Numeric),
+              duration_ms: kind_of(Integer)
             )
           )
 
-          service.send(:update_log_with_response, response)
+          service.send(:update_log_with_response, response, 100)
         end
       end
 
@@ -371,11 +375,12 @@ RSpec.describe Llm::QueryService, type: :service do
         it 'updates log with error information' do
           expect(ai_log).to receive(:update!).with(
             hash_including(
-              response: 'ERROR: Test error'
+              response: 'ERROR: Test error',
+              duration_ms: kind_of(Integer)
             )
           )
 
-          service.send(:update_log_with_error, error)
+          service.send(:update_log_with_error, error, 100)
         end
       end
     end

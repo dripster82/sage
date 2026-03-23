@@ -43,6 +43,8 @@ Rails.application.routes.draw do
         end
       end
 
+      post 'prompt_flows/process', to: 'user_prompt_flows#process_prompt_flow'
+
       resources :prompt_flows, only: [:create, :show, :update] do
         member do
           post :execute

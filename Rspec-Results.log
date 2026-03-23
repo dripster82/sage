@@ -1,0 +1,274 @@
+I, [2026-02-16T17:05:31.038084 #4465]  INFO -- RubyLLM: Fetching models from providers: OpenAI, OpenRouter
+I, [2026-02-16T17:05:31.897088 #4465]  INFO -- RubyLLM: Fetching models from Parsera API...
+.........................................................................................Capybara starting Puma...
+* Version 7.0.2, codename: Romantic Warrior
+* Min threads: 0, max threads: 4
+* Listening on http://127.0.0.1:39359
+FFFFFF...............................................................................................................................................................................................................................................................................................................................................................................................................*........................................................................................................................................................................................**.............*....................................................................................................................................
+
+Pending: (Failures listed here are expected and do not affect your suite's status)
+
+  1) User add some examples to (or delete) /app/spec/models/user_spec.rb
+     # Not yet implemented
+     # ./spec/models/user_spec.rb:4
+
+  2) KnowledgeGraph::BuildService performance processes large documents efficiently
+     # Requires proper service mocking to avoid real LLM calls
+     # ./spec/services/knowledge_graph/build_service_spec.rb:108
+
+  3) KnowledgeGraph::BuildService integration works with real document data
+     # Requires proper service mocking to avoid real LLM calls
+     # ./spec/services/knowledge_graph/build_service_spec.rb:115
+
+  4) KnowledgeGraph::LlmExtractionService integration works with real document data
+     # Requires proper service mocking to avoid real LLM calls
+     # ./spec/services/knowledge_graph/llm_extraction_service_spec.rb:124
+
+Failures:
+
+  1) AI Test Page JavaScript Functionality Tests shows model dropdown when prompt is selected
+     Failure/Error: visit '/admin/ai_test'
+
+     Selenium::WebDriver::Error::UnknownError:
+       Process unexpectedly closed with status signal
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:63:in 'Selenium::WebDriver::Remote::Response#add_cause'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:41:in 'Selenium::WebDriver::Remote::Response#error'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:52:in 'Selenium::WebDriver::Remote::Response#assert_ok'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:34:in 'Selenium::WebDriver::Remote::Response#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Selenium::WebDriver::Remote::Http::Common#create_response'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/default.rb:103:in 'Selenium::WebDriver::Remote::Http::Default#request'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:68:in 'Selenium::WebDriver::Remote::Http::Common#call'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:625:in 'Selenium::WebDriver::Remote::Bridge#execute'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:76:in 'Selenium::WebDriver::Remote::Bridge#create_session'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:325:in 'block in Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:324:in 'Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:73:in 'Selenium::WebDriver::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/firefox/driver.rb:41:in 'Selenium::WebDriver::Firefox::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Selenium::WebDriver::Driver.for'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver.rb:88:in 'Selenium::WebDriver.for'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:75:in 'Capybara::Selenium::Driver#browser'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:95:in 'Capybara::Selenium::Driver#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/session.rb:281:in 'Capybara::Session#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Method#call'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Capybara::DSL#visit'
+     # ./spec/features/admin/ai_test_page_spec.rb:17:in 'block (2 levels) in <top (required)>'
+     # ./spec/rails_helper.rb:96:in 'block (3 levels) in <top (required)>'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/strategy.rb:30:in 'DatabaseCleaner::Strategy#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:34:in 'block (2 levels) in DatabaseCleaner::Cleaners#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:35:in 'DatabaseCleaner::Cleaners#cleaning'
+     # ./spec/rails_helper.rb:95:in 'block (2 levels) in <top (required)>'
+     # /usr/local/bundle/gems/webmock-3.25.1/lib/webmock/rspec.rb:39:in 'block (2 levels) in <top (required)>'
+     # ------------------
+     # --- Caused by: ---
+     # Selenium::WebDriver::Error::WebDriverError:
+     #   
+
+  2) AI Test Page JavaScript Functionality Tests preselects the effective model when prompt is selected
+     Failure/Error: visit '/admin/ai_test'
+
+     Selenium::WebDriver::Error::UnknownError:
+       Process unexpectedly closed with status signal
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:63:in 'Selenium::WebDriver::Remote::Response#add_cause'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:41:in 'Selenium::WebDriver::Remote::Response#error'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:52:in 'Selenium::WebDriver::Remote::Response#assert_ok'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:34:in 'Selenium::WebDriver::Remote::Response#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Selenium::WebDriver::Remote::Http::Common#create_response'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/default.rb:103:in 'Selenium::WebDriver::Remote::Http::Default#request'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:68:in 'Selenium::WebDriver::Remote::Http::Common#call'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:625:in 'Selenium::WebDriver::Remote::Bridge#execute'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:76:in 'Selenium::WebDriver::Remote::Bridge#create_session'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:325:in 'block in Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:324:in 'Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:73:in 'Selenium::WebDriver::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/firefox/driver.rb:41:in 'Selenium::WebDriver::Firefox::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Selenium::WebDriver::Driver.for'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver.rb:88:in 'Selenium::WebDriver.for'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:75:in 'Capybara::Selenium::Driver#browser'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:95:in 'Capybara::Selenium::Driver#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/session.rb:281:in 'Capybara::Session#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Method#call'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Capybara::DSL#visit'
+     # ./spec/features/admin/ai_test_page_spec.rb:17:in 'block (2 levels) in <top (required)>'
+     # ./spec/rails_helper.rb:96:in 'block (3 levels) in <top (required)>'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/strategy.rb:30:in 'DatabaseCleaner::Strategy#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:34:in 'block (2 levels) in DatabaseCleaner::Cleaners#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:35:in 'DatabaseCleaner::Cleaners#cleaning'
+     # ./spec/rails_helper.rb:95:in 'block (2 levels) in <top (required)>'
+     # /usr/local/bundle/gems/webmock-3.25.1/lib/webmock/rspec.rb:39:in 'block (2 levels) in <top (required)>'
+     # ------------------
+     # --- Caused by: ---
+     # Selenium::WebDriver::Error::WebDriverError:
+     #   
+
+  3) AI Test Page JavaScript Functionality Tests filters dropdown items when searching
+     Failure/Error: visit '/admin/ai_test'
+
+     Selenium::WebDriver::Error::UnknownError:
+       Process unexpectedly closed with status signal
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:63:in 'Selenium::WebDriver::Remote::Response#add_cause'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:41:in 'Selenium::WebDriver::Remote::Response#error'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:52:in 'Selenium::WebDriver::Remote::Response#assert_ok'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:34:in 'Selenium::WebDriver::Remote::Response#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Selenium::WebDriver::Remote::Http::Common#create_response'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/default.rb:103:in 'Selenium::WebDriver::Remote::Http::Default#request'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:68:in 'Selenium::WebDriver::Remote::Http::Common#call'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:625:in 'Selenium::WebDriver::Remote::Bridge#execute'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:76:in 'Selenium::WebDriver::Remote::Bridge#create_session'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:325:in 'block in Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:324:in 'Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:73:in 'Selenium::WebDriver::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/firefox/driver.rb:41:in 'Selenium::WebDriver::Firefox::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Selenium::WebDriver::Driver.for'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver.rb:88:in 'Selenium::WebDriver.for'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:75:in 'Capybara::Selenium::Driver#browser'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:95:in 'Capybara::Selenium::Driver#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/session.rb:281:in 'Capybara::Session#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Method#call'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Capybara::DSL#visit'
+     # ./spec/features/admin/ai_test_page_spec.rb:17:in 'block (2 levels) in <top (required)>'
+     # ./spec/rails_helper.rb:96:in 'block (3 levels) in <top (required)>'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/strategy.rb:30:in 'DatabaseCleaner::Strategy#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:34:in 'block (2 levels) in DatabaseCleaner::Cleaners#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:35:in 'DatabaseCleaner::Cleaners#cleaning'
+     # ./spec/rails_helper.rb:95:in 'block (2 levels) in <top (required)>'
+     # /usr/local/bundle/gems/webmock-3.25.1/lib/webmock/rspec.rb:39:in 'block (2 levels) in <top (required)>'
+     # ------------------
+     # --- Caused by: ---
+     # Selenium::WebDriver::Error::WebDriverError:
+     #   
+
+  4) AI Test Page JavaScript Functionality Tests selects model when dropdown item is clicked
+     Failure/Error: visit '/admin/ai_test'
+
+     Selenium::WebDriver::Error::UnknownError:
+       Process unexpectedly closed with status signal
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:63:in 'Selenium::WebDriver::Remote::Response#add_cause'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:41:in 'Selenium::WebDriver::Remote::Response#error'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:52:in 'Selenium::WebDriver::Remote::Response#assert_ok'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:34:in 'Selenium::WebDriver::Remote::Response#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Selenium::WebDriver::Remote::Http::Common#create_response'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/default.rb:103:in 'Selenium::WebDriver::Remote::Http::Default#request'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:68:in 'Selenium::WebDriver::Remote::Http::Common#call'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:625:in 'Selenium::WebDriver::Remote::Bridge#execute'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:76:in 'Selenium::WebDriver::Remote::Bridge#create_session'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:325:in 'block in Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:324:in 'Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:73:in 'Selenium::WebDriver::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/firefox/driver.rb:41:in 'Selenium::WebDriver::Firefox::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Selenium::WebDriver::Driver.for'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver.rb:88:in 'Selenium::WebDriver.for'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:75:in 'Capybara::Selenium::Driver#browser'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:95:in 'Capybara::Selenium::Driver#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/session.rb:281:in 'Capybara::Session#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Method#call'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Capybara::DSL#visit'
+     # ./spec/features/admin/ai_test_page_spec.rb:17:in 'block (2 levels) in <top (required)>'
+     # ./spec/rails_helper.rb:96:in 'block (3 levels) in <top (required)>'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/strategy.rb:30:in 'DatabaseCleaner::Strategy#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:34:in 'block (2 levels) in DatabaseCleaner::Cleaners#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:35:in 'DatabaseCleaner::Cleaners#cleaning'
+     # ./spec/rails_helper.rb:95:in 'block (2 levels) in <top (required)>'
+     # /usr/local/bundle/gems/webmock-3.25.1/lib/webmock/rspec.rb:39:in 'block (2 levels) in <top (required)>'
+     # ------------------
+     # --- Caused by: ---
+     # Selenium::WebDriver::Error::WebDriverError:
+     #   
+
+  5) AI Test Page JavaScript Functionality Tests shows dropdown when search field is clicked even when empty
+     Failure/Error: visit '/admin/ai_test'
+
+     Selenium::WebDriver::Error::UnknownError:
+       Process unexpectedly closed with status signal
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:63:in 'Selenium::WebDriver::Remote::Response#add_cause'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:41:in 'Selenium::WebDriver::Remote::Response#error'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:52:in 'Selenium::WebDriver::Remote::Response#assert_ok'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:34:in 'Selenium::WebDriver::Remote::Response#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Selenium::WebDriver::Remote::Http::Common#create_response'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/default.rb:103:in 'Selenium::WebDriver::Remote::Http::Default#request'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:68:in 'Selenium::WebDriver::Remote::Http::Common#call'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:625:in 'Selenium::WebDriver::Remote::Bridge#execute'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:76:in 'Selenium::WebDriver::Remote::Bridge#create_session'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:325:in 'block in Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:324:in 'Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:73:in 'Selenium::WebDriver::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/firefox/driver.rb:41:in 'Selenium::WebDriver::Firefox::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Selenium::WebDriver::Driver.for'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver.rb:88:in 'Selenium::WebDriver.for'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:75:in 'Capybara::Selenium::Driver#browser'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:95:in 'Capybara::Selenium::Driver#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/session.rb:281:in 'Capybara::Session#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Method#call'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Capybara::DSL#visit'
+     # ./spec/features/admin/ai_test_page_spec.rb:17:in 'block (2 levels) in <top (required)>'
+     # ./spec/rails_helper.rb:96:in 'block (3 levels) in <top (required)>'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/strategy.rb:30:in 'DatabaseCleaner::Strategy#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:34:in 'block (2 levels) in DatabaseCleaner::Cleaners#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:35:in 'DatabaseCleaner::Cleaners#cleaning'
+     # ./spec/rails_helper.rb:95:in 'block (2 levels) in <top (required)>'
+     # /usr/local/bundle/gems/webmock-3.25.1/lib/webmock/rspec.rb:39:in 'block (2 levels) in <top (required)>'
+     # ------------------
+     # --- Caused by: ---
+     # Selenium::WebDriver::Error::WebDriverError:
+     #   
+
+  6) AI Test Page JavaScript Functionality Tests hides dropdown when clicking outside
+     Failure/Error: visit '/admin/ai_test'
+
+     Selenium::WebDriver::Error::UnknownError:
+       Process unexpectedly closed with status signal
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:63:in 'Selenium::WebDriver::Remote::Response#add_cause'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:41:in 'Selenium::WebDriver::Remote::Response#error'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:52:in 'Selenium::WebDriver::Remote::Response#assert_ok'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/response.rb:34:in 'Selenium::WebDriver::Remote::Response#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:103:in 'Selenium::WebDriver::Remote::Http::Common#create_response'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/default.rb:103:in 'Selenium::WebDriver::Remote::Http::Default#request'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/http/common.rb:68:in 'Selenium::WebDriver::Remote::Http::Common#call'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:625:in 'Selenium::WebDriver::Remote::Bridge#execute'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/remote/bridge.rb:76:in 'Selenium::WebDriver::Remote::Bridge#create_session'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:325:in 'block in Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:324:in 'Selenium::WebDriver::Driver#create_bridge'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:73:in 'Selenium::WebDriver::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/firefox/driver.rb:41:in 'Selenium::WebDriver::Firefox::Driver#initialize'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Class#new'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver/common/driver.rb:53:in 'Selenium::WebDriver::Driver.for'
+     # /usr/local/bundle/gems/selenium-webdriver-4.35.0/lib/selenium/webdriver.rb:88:in 'Selenium::WebDriver.for'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:75:in 'Capybara::Selenium::Driver#browser'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/selenium/driver.rb:95:in 'Capybara::Selenium::Driver#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/session.rb:281:in 'Capybara::Session#visit'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Method#call'
+     # /usr/local/bundle/gems/capybara-3.40.0/lib/capybara/dsl.rb:52:in 'Capybara::DSL#visit'
+     # ./spec/features/admin/ai_test_page_spec.rb:17:in 'block (2 levels) in <top (required)>'
+     # ./spec/rails_helper.rb:96:in 'block (3 levels) in <top (required)>'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/strategy.rb:30:in 'DatabaseCleaner::Strategy#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:34:in 'block (2 levels) in DatabaseCleaner::Cleaners#cleaning'
+     # /usr/local/bundle/gems/database_cleaner-core-2.0.1/lib/database_cleaner/cleaners.rb:35:in 'DatabaseCleaner::Cleaners#cleaning'
+     # ./spec/rails_helper.rb:95:in 'block (2 levels) in <top (required)>'
+     # /usr/local/bundle/gems/webmock-3.25.1/lib/webmock/rspec.rb:39:in 'block (2 levels) in <top (required)>'
+     # ------------------
+     # --- Caused by: ---
+     # Selenium::WebDriver::Error::WebDriverError:
+     #   
+
+Finished in 1 minute 15.88 seconds (files took 4.08 seconds to load)
+827 examples, 6 failures, 4 pending
+
+Failed examples:
+
+rspec ./spec/features/admin/ai_test_page_spec.rb:201 # AI Test Page JavaScript Functionality Tests shows model dropdown when prompt is selected
+rspec ./spec/features/admin/ai_test_page_spec.rb:213 # AI Test Page JavaScript Functionality Tests preselects the effective model when prompt is selected
+rspec ./spec/features/admin/ai_test_page_spec.rb:230 # AI Test Page JavaScript Functionality Tests filters dropdown items when searching
+rspec ./spec/features/admin/ai_test_page_spec.rb:251 # AI Test Page JavaScript Functionality Tests selects model when dropdown item is clicked
+rspec ./spec/features/admin/ai_test_page_spec.rb:271 # AI Test Page JavaScript Functionality Tests shows dropdown when search field is clicked even when empty
+rspec ./spec/features/admin/ai_test_page_spec.rb:293 # AI Test Page JavaScript Functionality Tests hides dropdown when clicking outside
+

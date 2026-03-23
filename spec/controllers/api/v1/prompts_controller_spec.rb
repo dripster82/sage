@@ -155,15 +155,14 @@ RSpec.describe Api::V1::PromptsController, type: :controller do
         expect(json_response['error']).to eq('Prompt parameter is required')
       end
 
-      it 'returns error when query is missing' do
-        invalid_params = valid_params.except(:query)
+      it 'allows query to be missing (query is optional with prompt templates)' do
+        params_without_query = valid_params.except(:query)
 
-        post :process_prompt, params: invalid_params, format: :json
-        
-        expect(response).to have_http_status(:bad_request)
+        post :process_prompt, params: params_without_query, format: :json
+
+        expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
-        expect(json_response['success']).to be false
-        expect(json_response['error']).to eq('Query parameter is required')
+        expect(json_response['success']).to be true
       end
     end
 

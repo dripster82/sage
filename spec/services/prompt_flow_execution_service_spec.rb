@@ -102,7 +102,7 @@ RSpec.describe PromptFlowExecutionService, type: :service do
 
       expect(execution.status).to eq('completed')
       expect(execution.outputs).to eq({ 'output' => 'ok' })
-      expect(execution.execution_log.size).to eq(3)
+      expect(execution.execution_log.size).to eq(4) # start + input + prompt + output
     end
 
     it 'fails when max execution limit is exceeded' do

@@ -252,19 +252,19 @@ RSpec.describe 'Document Processing Pipeline', type: :integration do
 
     # Mock prompts - need to mock all the prompts used by KnowledgeGraph services
     allow(Prompt).to receive(:find_by).with(name: 'text_summarization').and_return(
-      double('Prompt', tags_hash: { text: nil }, content: 'Summarize: %{text}')
+      double('Prompt', name: 'text_summarization', tags_hash: { text: nil }, content: 'Summarize: %{text}')
     )
     allow(Prompt).to receive(:find_by).with(name: 'kg_extraction_category_validation').and_return(
-      double('Prompt', tags_hash: { categories: nil, summary: nil }, content: 'Validate categories: %{categories}')
+      double('Prompt', name: 'kg_extraction_category_validation', tags_hash: { categories: nil, summary: nil }, content: 'Validate categories: %{categories}')
     )
     allow(Prompt).to receive(:find_by).with(name: 'kg_extraction_1st_pass').and_return(
-      double('Prompt', tags_hash: { text: nil, current_schema: nil, summary: nil }, content: 'Extract entities: %{text}')
+      double('Prompt', name: 'kg_extraction_1st_pass', tags_hash: { text: nil, current_schema: nil, summary: nil }, content: 'Extract entities: %{text}')
     )
     allow(Prompt).to receive(:find_by).with(name: 'kg_extraction_2nd_pass').and_return(
-      double('Prompt', tags_hash: { text: nil, summary: nil, response: nil, entity_types: nil }, content: 'Process entities: %{text}')
+      double('Prompt', name: 'kg_extraction_2nd_pass', tags_hash: { text: nil, summary: nil, response: nil, entity_types: nil }, content: 'Process entities: %{text}')
     )
     allow(Prompt).to receive(:find_by).with(name: 'kg_node_validation').and_return(
-      double('Prompt', tags_hash: { nodes: nil }, content: 'Validate nodes: %{nodes}')
+      double('Prompt', name: 'kg_node_validation', tags_hash: { nodes: nil }, content: 'Validate nodes: %{nodes}')
     )
 
     # Mock the entire KnowledgeGraph::BuildService to avoid complex internal mocking

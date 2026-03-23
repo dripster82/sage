@@ -33,19 +33,19 @@ RSpec.describe Documents::ImportService, type: :service do
       
       # Mock prompts
       allow(Prompt).to receive(:find_by).with(name: 'text_summarization').and_return(
-        double('Prompt', tags_hash: { text: nil }, content: 'Summarize: %{text}')
+        double('Prompt', name: 'text_summarization', tags_hash: { text: nil }, content: 'Summarize: %{text}')
       )
       allow(Prompt).to receive(:find_by).with(name: 'kg_extraction_category_validation').and_return(
-        double('Prompt', tags_hash: { categories: nil, summary: nil }, content: 'Validate categories: %{categories}')
+        double('Prompt', name: 'kg_extraction_category_validation', tags_hash: { categories: nil, summary: nil }, content: 'Validate categories: %{categories}')
       )
       allow(Prompt).to receive(:find_by).with(name: 'kg_extraction_1st_pass').and_return(
-        double('Prompt', tags_hash: { text: nil, current_schema: nil, summary: nil }, content: 'Extract entities: %{text}')
+        double('Prompt', name: 'kg_extraction_1st_pass', tags_hash: { text: nil, current_schema: nil, summary: nil }, content: 'Extract entities: %{text}')
       )
       allow(Prompt).to receive(:find_by).with(name: 'kg_extraction_2nd_pass').and_return(
-        double('Prompt', tags_hash: { text: nil, summary: nil, response: nil, entity_types: nil }, content: 'Process entities: %{text}')
+        double('Prompt', name: 'kg_extraction_2nd_pass', tags_hash: { text: nil, summary: nil, response: nil, entity_types: nil }, content: 'Process entities: %{text}')
       )
       allow(Prompt).to receive(:find_by).with(name: 'kg_node_validation').and_return(
-        double('Prompt', tags_hash: { nodes: nil }, content: 'Validate nodes: %{nodes}')
+        double('Prompt', name: 'kg_node_validation', tags_hash: { nodes: nil }, content: 'Validate nodes: %{nodes}')
       )
     end
 
@@ -111,8 +111,9 @@ RSpec.describe Documents::ImportService, type: :service do
       mock_llm_response(content: 'Test summary')
       mock_embedding_response(vectors: [0.1, 0.2, 0.3])
       
-      @prompt = double('Prompt', 
-        tags_hash: { text: nil }, 
+      @prompt = double('Prompt',
+        name: 'text_summarization',
+        tags_hash: { text: nil },
         content: 'Summarize: %{text}'
       )
       allow(Prompt).to receive(:find_by).with(name: 'text_summarization').and_return(@prompt)
@@ -249,7 +250,7 @@ RSpec.describe Documents::ImportService, type: :service do
       service.document.text = 'Test content'
       # Mock the prompt first
       allow(Prompt).to receive(:find_by).with(name: 'text_summarization').and_return(
-        double('Prompt', tags_hash: { text: nil }, content: 'Summarize: %{text}')
+        double('Prompt', name: 'text_summarization', tags_hash: { text: nil }, content: 'Summarize: %{text}')
       )
       allow_any_instance_of(Llm::QueryService).to receive(:ask).and_raise(StandardError, 'LLM Error')
 
@@ -295,19 +296,19 @@ RSpec.describe Documents::ImportService, type: :service do
 
       # Mock all the prompts needed
       allow(Prompt).to receive(:find_by).with(name: 'text_summarization').and_return(
-        double('Prompt', tags_hash: { text: nil }, content: 'Summarize: %{text}')
+        double('Prompt', name: 'text_summarization', tags_hash: { text: nil }, content: 'Summarize: %{text}')
       )
       allow(Prompt).to receive(:find_by).with(name: 'kg_extraction_category_validation').and_return(
-        double('Prompt', tags_hash: { categories: nil, summary: nil }, content: 'Validate categories: %{categories}')
+        double('Prompt', name: 'kg_extraction_category_validation', tags_hash: { categories: nil, summary: nil }, content: 'Validate categories: %{categories}')
       )
       allow(Prompt).to receive(:find_by).with(name: 'kg_extraction_1st_pass').and_return(
-        double('Prompt', tags_hash: { text: nil, current_schema: nil, summary: nil }, content: 'Extract entities: %{text}')
+        double('Prompt', name: 'kg_extraction_1st_pass', tags_hash: { text: nil, current_schema: nil, summary: nil }, content: 'Extract entities: %{text}')
       )
       allow(Prompt).to receive(:find_by).with(name: 'kg_extraction_2nd_pass').and_return(
-        double('Prompt', tags_hash: { text: nil, summary: nil, response: nil, entity_types: nil }, content: 'Process entities: %{text}')
+        double('Prompt', name: 'kg_extraction_2nd_pass', tags_hash: { text: nil, summary: nil, response: nil, entity_types: nil }, content: 'Process entities: %{text}')
       )
       allow(Prompt).to receive(:find_by).with(name: 'kg_node_validation').and_return(
-        double('Prompt', tags_hash: { nodes: nil }, content: 'Validate nodes: %{nodes}')
+        double('Prompt', name: 'kg_node_validation', tags_hash: { nodes: nil }, content: 'Validate nodes: %{nodes}')
       )
       # Mock the entire KnowledgeGraph::BuildService to avoid complex internal mocking
       allow_any_instance_of(KnowledgeGraph::BuildService).to receive(:process).and_return({})

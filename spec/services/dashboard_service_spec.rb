@@ -20,6 +20,11 @@ RSpec.describe DashboardService, type: :service do
     let!(:this_month_logs) { create_list(:ai_log, 3, created_at: 1.week.ago) }
     let!(:last_month_logs) { create_list(:ai_log, 2, created_at: 1.month.ago) }
 
+    before do
+      # Mock the OpenRouter service to avoid real API calls
+      allow(OpenrouterService).to receive(:credits).and_return(100.0)
+    end
+
     it 'returns array of 5 metrics' do
       metrics = service.kpi_metrics
       expect(metrics).to be_an(Array)
@@ -38,10 +43,43 @@ RSpec.describe DashboardService, type: :service do
       end
     end
 
-    describe 'this month cost metric' do
+    describe 'todays cost metric' do
       it 'has correct structure' do
         metric = service.kpi_metrics.first
-        
+
+        expect(metric[:label]).to eq("Today's Cost")
+        expect(metric[:symbol]).to eq('$')
+        expect(metric[:color]).to eq('green')
+        expect(metric[:value]).to be_a(Numeric)
+        expect(metric[:formatted]).to be_a(String)
+      end
+
+      it 'calculates cost for today' do
+        # Mock the private method to test calculation
+        allow(service).to receive(:calculate_cost_for_period).and_return(123.45)
+
+        metric = service.kpi_metrics.first
+        expect(metric[:value]).to eq(123.45)
+        expect(metric[:formatted]).to include('123.45')
+      end
+    end
+
+    describe 'yesterdays cost metric' do
+      it 'has correct structure' do
+        metric = service.kpi_metrics[1]
+
+        expect(metric[:label]).to eq("Yesterday's Cost")
+        expect(metric[:symbol]).to eq('$')
+        expect(metric[:color]).to eq('blue')
+        expect(metric[:value]).to be_a(Numeric)
+        expect(metric[:formatted]).to be_a(String)
+      end
+    end
+
+    describe 'this month and last month cost metrics' do
+      it 'returns this month cost as third metric' do
+        metric = service.kpi_metrics[2]
+
         expect(metric[:label]).to eq('Total Cost (This Month)')
         expect(metric[:symbol]).to eq('$')
         expect(metric[:color]).to eq('green')
@@ -49,20 +87,9 @@ RSpec.describe DashboardService, type: :service do
         expect(metric[:formatted]).to be_a(String)
       end
 
-      it 'calculates cost for current month' do
-        # Mock the private method to test calculation
-        allow(service).to receive(:calculate_cost_for_period).and_return(123.45)
-        
-        metric = service.kpi_metrics.first
-        expect(metric[:value]).to eq(123.45)
-        expect(metric[:formatted]).to include('123.45')
-      end
-    end
+      it 'returns last month cost as fourth metric' do
+        metric = service.kpi_metrics[3]
 
-    describe 'last month cost metric' do
-      it 'has correct structure' do
-        metric = service.kpi_metrics[1]
-        
         expect(metric[:label]).to eq('Total Cost (Last Month)')
         expect(metric[:symbol]).to eq('$')
         expect(metric[:color]).to eq('blue')
@@ -71,21 +98,15 @@ RSpec.describe DashboardService, type: :service do
       end
     end
 
-    describe 'placeholder metrics' do
-      it 'returns placeholder metrics for remaining slots' do
-        metrics = service.kpi_metrics[2..4]
-        
-        metrics.each_with_index do |metric, index|
-          expect(metric[:label]).to eq("Metric #{index + 3}")
-          expect(metric[:value]).to eq('?')
-          expect(metric[:formatted]).to eq('?')
-          expect(metric[:symbol]).to eq('')
-        end
-      end
+    describe 'openrouter credits metric' do
+      it 'returns openrouter credits as fifth metric' do
+        metric = service.kpi_metrics[4]
 
-      it 'has different colors for placeholder metrics' do
-        colors = service.kpi_metrics[2..4].map { |m| m[:color] }
-        expect(colors).to eq(['purple', 'yellow', 'red'])
+        expect(metric[:label]).to eq('OpenRouter Credits')
+        expect(metric[:symbol]).to eq('$')
+        expect(metric[:color]).to eq('red')
+        expect(metric[:value]).to be_a(Numeric)
+        expect(metric[:formatted]).to be_a(String)
       end
     end
   end
@@ -199,10 +220,15 @@ RSpec.describe DashboardService, type: :service do
   end
 
   describe 'integration with AiLog model' do
+    before do
+      # Mock the OpenRouter service to avoid real API calls
+      allow(OpenrouterService).to receive(:credits).and_return(100.0)
+    end
+
     it 'works with real AiLog data' do
       # Create some real AI logs
       create_list(:ai_log, 5, :with_high_tokens, created_at: 1.week.ago)
-      
+
       expect {
         metrics = service.kpi_metrics
         expect(metrics).to be_present
@@ -211,9 +237,14 @@ RSpec.describe DashboardService, type: :service do
   end
 
   describe 'error handling' do
+    before do
+      # Mock the OpenRouter service to avoid real API calls
+      allow(OpenrouterService).to receive(:credits).and_return(100.0)
+    end
+
     it 'handles database errors gracefully' do
       allow(AiLog).to receive(:where).and_raise(ActiveRecord::ConnectionNotEstablished)
-      
+
       expect {
         service.kpi_metrics
       }.not_to raise_error
@@ -221,10 +252,15 @@ RSpec.describe DashboardService, type: :service do
   end
 
   describe 'performance' do
+    before do
+      # Mock the OpenRouter service to avoid real API calls
+      allow(OpenrouterService).to receive(:credits).and_return(100.0)
+    end
+
     it 'performs efficiently with large datasets' do
       # Create many AI logs
       create_list(:ai_log, 100, created_at: 1.week.ago)
-      
+
       expect {
         Timeout.timeout(5) do
           service.kpi_metrics

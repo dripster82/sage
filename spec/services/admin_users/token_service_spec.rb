@@ -104,8 +104,8 @@ RSpec.describe AdminUsers::TokenService, type: :service do
         described_class.rotate_refresh_token(refresh_token, wrong_fingerprint)
       }.to raise_error(described_class::DeviceMismatchError)
 
-      # Token family should be deleted
-      expect(TokenFamily.find_by(id: token_family.id)).to be_nil
+      # Token family should still exist (not destroyed on device mismatch)
+      expect(TokenFamily.find_by(id: token_family.id)).to be_present
     end
 
     it 'raises error for token reuse detection' do

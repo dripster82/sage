@@ -91,8 +91,8 @@ RSpec.describe 'AI Test Page', type: :feature do
     it 'has response metadata container with grid layout CSS' do
       expect(page).to have_css('#response-meta.ai-test-response-meta')
 
-      # Check that the grid layout CSS is present
-      expect(page.html).to include('grid-template-columns: repeat(auto-fit, minmax(150px, 250px))')
+      # Check that the grid layout CSS is present (actual CSS uses minmax(180px, 1fr))
+      expect(page.html).to include('grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))')
       expect(page.html).to include('.ai-test-meta-item')
       expect(page.html).to include('.ai-test-meta-label')
       expect(page.html).to include('.ai-test-meta-value')

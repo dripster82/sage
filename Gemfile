@@ -61,3 +61,5 @@ gem "json-repair", "~> 0.2.0"
 
 gem "github-markup", "~> 5.0"
 gem "commonmarker", "~> 0.23"
+
+gem "parallel_tests"

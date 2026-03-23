@@ -25,6 +25,7 @@ RSpec.describe PromptFlowServices::PromptNodeService, type: :service do
       query: 'hello',
       parameters: { 'text' => 'world' }
     )
-    expect(result['output']).to eq(mock_response)
+    # The service returns node_state which has 'response' key when no output_ports are configured
+    expect(result['response']).to eq(mock_response)
   end
 end

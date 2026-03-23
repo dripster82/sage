@@ -6,7 +6,7 @@ RSpec.describe KnowledgeGraph::BuildService, type: :service do
   # Test data
   let(:test_document) { create_test_document(text: 'Test document content') }
   let(:test_chunks) { create_test_chunks(count: 3) }
-  let(:mock_prompt) { double('Prompt', tags_hash: { text: nil, current_schema: nil }, content: 'Extract entities: %{text}') }
+  let(:mock_prompt) { double('Prompt', name: 'kg_extraction_category_validation', tags_hash: { text: nil, current_schema: nil }, content: 'Extract entities: %{text}') }
   let(:mock_llm_response) { double('Response', content: '{"entities": ["Person", "Company"]}') }
   let(:mock_embedding) { double('Embedding', vectors: Array.new(1536) { rand }) }
   let(:expected_kg_result) { { nodes: 5, relationships: 3, processing_time: 2.5 } }

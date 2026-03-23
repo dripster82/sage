@@ -6,8 +6,8 @@ RSpec.describe KnowledgeGraph::LlmExtractionService, type: :service do
   # Test data
   let(:test_document) { create_test_document(text: 'Test document content about companies and people') }
   let(:test_chunks) { create_test_chunks(count: 3) }
-  let(:mock_prompt1) { double('Prompt', tags_hash: { text: nil, current_schema: nil, summary: nil }, content: 'Extract entities: %{text}') }
-  let(:mock_prompt2) { double('Prompt', tags_hash: { text: nil, summary: nil, response: nil, entity_types: nil }, content: 'Refine entities: %{text}') }
+  let(:mock_prompt1) { double('Prompt', name: 'kg_extraction_1st_pass', tags_hash: { text: nil, current_schema: nil, summary: nil }, content: 'Extract entities: %{text}') }
+  let(:mock_prompt2) { double('Prompt', name: 'kg_extraction_2nd_pass', tags_hash: { text: nil, summary: nil, response: nil, entity_types: nil }, content: 'Refine entities: %{text}') }
   let(:mock_llm_response) { 
     {
       "nodes" => [
